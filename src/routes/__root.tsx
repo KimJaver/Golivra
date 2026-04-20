@@ -1,6 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import appLogo from "../assets/golivra-logo.png";
 
 function NotFoundComponent() {
   return (
@@ -35,13 +36,24 @@ export const Route = createRootRoute({
       { property: "og:title", content: "GoLivra App" },
       { property: "og:description", content: "GoLivra Project" },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: appLogo },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@GoLivra" },
+      { name: "twitter:image", content: appLogo },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        type: "image/png",
+        href: appLogo,
+      },
+      {
+        rel: "apple-touch-icon",
+        href: appLogo,
       },
     ],
   }),

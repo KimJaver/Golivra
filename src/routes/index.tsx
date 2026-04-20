@@ -5,6 +5,7 @@ import vendorImg from "@/assets/vendor.jpg";
 import deliveryImg from "@/assets/delivery.jpg";
 import restaurantImg from "@/assets/restaurant.jpg";
 import appMockup from "@/assets/app-mockup.jpg";
+import appLogo from "@/assets/golivra-logo.png";
 import { ShoppingBag, UtensilsCrossed, Bike, ArrowRight, MapPin, Sparkles, Store, Globe, Zap, ShieldCheck, Smartphone, Search, Package, Bell, MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -15,8 +16,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "GoLivra connecte vendeurs, restaurants et livreurs de Brazzaville dans une seule plateforme simple et fiable." },
       { property: "og:title", content: "GoLivra — Le commerce de Brazzaville, enfin connecté" },
       { property: "og:description", content: "Marketplace + restaurants + livraison à la demande. Une infrastructure digitale pour le commerce local." },
-      { property: "og:image", content: heroImg },
-      { name: "twitter:image", content: heroImg },
+      { property: "og:image", content: appLogo },
+      { name: "twitter:image", content: appLogo },
     ],
   }),
 });
