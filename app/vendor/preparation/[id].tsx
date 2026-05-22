@@ -1,0 +1,192 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { VendorScreenHeader } from '@/components/vendor-screen-header';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useVendor } from '@/contexts/vendor-context';
+import { createVendorPreparationStyles } from '@/constants/vendor-detail-styles';
+import { useActionFeedback } from '@/hooks/use-action-feedback';
+import { useAppColors } from '@/hooks/use-app-colors';
+import { useThemedStyles } from '@/hooks/use-themed-styles';
+import { useVendorTheme } from '@/hooks/use-vendor-theme';
+import { getSessionToken } from '@/lib/auth';
+import { formatFcfa } from '@/lib/format';
+import { updateVendorOrderStatus } from '@/lib/vendor-api';
+import { VENDOR_HREF, hrefVendorOrder } from '@/lib/vendor-nav';
+
+const STEPS = ['Reçue', 'Préparation', 'Prête', 'Livraison GoLivra'];
+
+export default function VendorPreparationScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { orders, refresh } = useVendor();
+  const colors = useAppColors();
+  const { showSuccess, showError, FeedbackOverlay } = useActionFeedback();
+  const styles = useThemedStyles(createVendorPreparationStyles);
+  const { palette, labels } = useVendorTheme();
+  const [busy, setBusy] = useState(false);
+  const o = orders.find((x) => x.id === (typeof id === 'string' ? id : ''));
+
+  const activeIdx =
+    o?.statut === 'livree' || o?.statut === 'en_livraison'
+      ? 3
+      : o?.statut === 'prete'
+        ? 2
+        : o?.statut === 'en_preparation' || o?.statut === 'a_preparer' || o?.statut === 'acceptee'
+          ? 1
+          : 0;
+
+  const runStatus = async (statut: string, successMsg: string, goDeliveries?: boolean) => {
+    if (!o) return;
+    const token = await getSessionToken();
+    if (!token) return;
+    setBusy(true);
+    try {
+      await updateVendorOrderStatus(token, o.id, statut, o.sous_commande_id);
+      await refresh();
+      if (goDeliveries) {
+        showSuccess('Commande prête !', successMsg, {
+          primaryLabel: 'Suivre la livraison',
+          onPrimary: () => router.replace(VENDOR_HREF.deliveriesTab),
+        });
+      } else {
+        showSuccess('C’est enregistré', successMsg);
+      }
+    } catch (e) {
+      showError('Mise à jour impossible', e instanceof Error ? e.message : 'Réessayez.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!o) {
+    return (
+      <ThemedView style={{ flex: 1 }}>
+        <VendorScreenHeader title={labels.preparationHeader} />
+        <ThemedText style={{ padding: 24 }}>Commande introuvable.</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  const statusPill =
+    o.statut === 'prete'
+      ? { bg: colors.successSoft, txt: colors.success, label: 'Prête — livreur GoLivra' }
+      : o.statut === 'en_preparation' || o.statut === 'a_preparer' || o.statut === 'acceptee'
+        ? { bg: colors.warningSoft, txt: colors.warning, label: 'En préparation' }
+        : o.statut === 'en_attente'
+          ? { bg: colors.warningSoft, txt: colors.warning, label: 'En attente — à accepter' }
+          : { bg: colors.surfaceMuted, txt: colors.textSecondary, label: 'À traiter' };
+
+  return (
+    <ThemedView style={styles.screen}>
+      <FeedbackOverlay />
+      <VendorScreenHeader title={labels.preparationHeader} />
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: insets.bottom + 20 }}>
+        <ThemedText style={styles.ruleHint}>
+          Préparez la commande, puis marquez-la prête : un livreur GoLivra est assigné automatiquement via
+          l’application.
+        </ThemedText>
+
+        <View style={styles.stepRow}>
+          {STEPS.map((label, i) => {
+            const done = i < activeIdx;
+            const active = i === activeIdx;
+            return (
+              <View key={label} style={styles.stepCol}>
+                <View
+                  style={[
+                    styles.dot,
+                    done && { backgroundColor: palette.primary },
+                    active && { borderWidth: 3, borderColor: colors.primaryBright, backgroundColor: palette.primary },
+                  ]}
+                />
+                <ThemedText
+                  style={[styles.stepTxt, (done || active) && { color: palette.primaryDeep }]}
+                  numberOfLines={2}>
+                  {label}
+                </ThemedText>
+              </View>
+            );
+          })}
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <ThemedText type="defaultSemiBold">#{o.ref}</ThemedText>
+            <View style={[styles.pill, { backgroundColor: statusPill.bg }]}>
+              <ThemedText style={[styles.pillTxt, { color: statusPill.txt }]}>{statusPill.label}</ThemedText>
+            </View>
+          </View>
+          <ThemedText type="defaultSemiBold" style={styles.total}>
+            {formatFcfa(o.prixTotal)}
+          </ThemedText>
+        </View>
+
+        <ThemedText style={[styles.h3, { color: palette.primaryDeep }]}>{labels.orderArticlesTitle}</ThemedText>
+        {o.lignes.map((l) => (
+          <View key={l.id} style={styles.article}>
+            <View style={styles.thumb} />
+            <View style={{ flex: 1 }}>
+              <ThemedText type="defaultSemiBold">{l.nom}</ThemedText>
+              {l.detail ? <ThemedText style={styles.det}>{l.detail}</ThemedText> : null}
+              <ThemedText style={styles.det}>
+                {l.quantite} × {formatFcfa(l.prixUnitaire)}
+              </ThemedText>
+            </View>
+          </View>
+        ))}
+
+        {o.statut === 'en_attente' ? (
+          <Pressable
+            style={[styles.primary, { backgroundColor: palette.primary }]}
+            disabled={busy}
+            onPress={() => void runStatus('acceptee', 'Commande acceptée.')}>
+            <ThemedText style={styles.primaryTxt}>Accepter la commande</ThemedText>
+          </Pressable>
+        ) : null}
+
+        {o.statut === 'a_preparer' || o.statut === 'acceptee' ? (
+          <Pressable
+            style={[styles.primary, { backgroundColor: palette.primary }]}
+            disabled={busy}
+            onPress={() => void runStatus('en_preparation', 'Préparation démarrée.')}>
+            {busy ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <ThemedText style={styles.primaryTxt}>Commencer la préparation</ThemedText>
+            )}
+          </Pressable>
+        ) : null}
+
+        {o.statut === 'en_preparation' ? (
+          <Pressable
+            style={[styles.primary, { backgroundColor: palette.primaryDeep, marginTop: 10 }]}
+            disabled={busy}
+            onPress={() =>
+              void runStatus(
+                'prete',
+                'Commande prête. Un livreur GoLivra va être notifié.',
+                true,
+              )
+            }>
+            {busy ? (
+              <ActivityIndicator color={colors.onPrimary} />
+            ) : (
+              <ThemedText style={styles.primaryTxt}>Commande prête — appeler un livreur GoLivra</ThemedText>
+            )}
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          style={[styles.outline, { borderColor: palette.primary }]}
+          onPress={() => router.push(hrefVendorOrder(o.id))}>
+          <ThemedText style={[styles.outlineTxt, { color: palette.primary }]}>Voir détails commande</ThemedText>
+        </Pressable>
+      </ScrollView>
+    </ThemedView>
+  );
+}

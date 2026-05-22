@@ -1,0 +1,451 @@
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Keyboard,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { Image } from 'expo-image';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as ImagePicker from 'expo-image-picker';
+
+import { CategoryPicker } from '@/components/category-picker';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { useAppColors } from '@/hooks/use-app-colors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { registerAccount, setSessionToken } from '@/lib/auth';
+import { createEnterpriseRemote, fetchEnterpriseCategories, type EnterpriseCreated, type EnterpriseCategory } from '@/lib/enterprise';
+import { requestOtp, verifyOtp } from '@/lib/otp';
+import { formatCgPhone, toCgE164 } from '@/lib/phone';
+import { uploadImageForSignup } from '@/lib/uploads';
+import { VENDOR_HREF } from '@/lib/vendor-nav';
+
+type Profile = 'client' | 'vendeur';
+type CommerceKind = 'restaurant' | 'boutique';
+type SignupVariant = 'default' | CommerceKind;
+type BaseProps = { variant: SignupVariant; forcedProfile?: Profile };
+
+function commerceCopy(kind: CommerceKind) {
+  if (kind === 'restaurant') {
+    return {
+      screenTitle: 'Votre restaurant', lead: 'Renseignez une fiche simple et claire pour que les clients vous trouvent vite.',
+      nameLabel: 'Nom du restaurant', namePlaceholder: 'Ex. : Le Palmier', phoneLabel: 'Téléphone du restaurant',
+      addressLabel: 'Adresse', addressPlaceholder: 'Quartier, rue, point de repère…', descriptionPlaceholder: 'Spécialités, ambiance, horaires…',
+      detailsLabel: 'Type de cuisine', detailsPlaceholder: 'Choisissez une catégorie', imageLabel: 'Photo du restaurant (optionnel)',
+    };
+  }
+  return {
+    screenTitle: 'Votre boutique', lead: 'Renseignez une fiche simple et claire pour que les clients vous trouvent vite.',
+    nameLabel: 'Nom de la boutique', namePlaceholder: 'Ex. : Mode & Co', phoneLabel: 'Téléphone de la boutique',
+    addressLabel: 'Adresse', addressPlaceholder: 'Quartier, rue, point de repère…', descriptionPlaceholder: 'Univers, produits phares, services…',
+    detailsLabel: 'Catégorie de la boutique', detailsPlaceholder: 'Choisissez une catégorie', imageLabel: 'Photo de la boutique (optionnel)',
+  };
+}
+
+function headerCopy(variant: SignupVariant) {
+  if (variant === 'restaurant') return { title: 'Créer un compte', description: 'Type de compte : Restaurant' };
+  if (variant === 'boutique') return { title: 'Créer un compte', description: 'Type de compte : Boutique' };
+  return { title: 'Créer un compte', description: 'Type de compte : Client' };
+}
+
+function SignupScreenBase({ variant, forcedProfile }: BaseProps) {
+  const router = useRouter();
+  const colors = useAppColors();
+  const { showSuccess, FeedbackOverlay } = useActionFeedback();
+  const isDark = useColorScheme() === 'dark';
+  const { width } = useWindowDimensions();
+  const [profile, setProfile] = useState<Profile>(forcedProfile ?? (variant === 'default' ? 'client' : 'vendeur'));
+  const [commerceKind, setCommerceKind] = useState<CommerceKind | null>(variant === 'default' ? null : variant);
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('+242 ');
+  const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [profileImageDataUrl, setProfileImageDataUrl] = useState<string | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState('');
+  const [businessAddress, setBusinessAddress] = useState('');
+  const [businessDescription, setBusinessDescription] = useState('');
+  const [businessCategoryId, setBusinessCategoryId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<EnterpriseCategory[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [businessImageDataUrl, setBusinessImageDataUrl] = useState<string | null>(null);
+  const [businessImageUrl, setBusinessImageUrl] = useState<string | null>(null);
+  const [businessImagePreview, setBusinessImagePreview] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [testOtpCode, setTestOtpCode] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const formWidth = Math.min(width - 40, 460);
+  const phoneE164 = toCgE164(phone);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (variant !== 'default') return;
+    if (forcedProfile === 'client') { setCommerceKind(null); setProfile('client'); return; }
+    if (profile === 'client') setCommerceKind(null);
+  }, [forcedProfile, profile, variant]);
+
+  useEffect(() => {
+    if (profile !== 'vendeur' || !commerceKind) { setCategories([]); setBusinessCategoryId(null); return; }
+    let alive = true;
+    setCategoriesLoading(true);
+    fetchEnterpriseCategories(commerceKind)
+      .then((list) => { if (!alive) return; setCategories(list); })
+      .catch(() => { if (!alive) return; setCategories([]); })
+      .finally(() => { if (alive) setCategoriesLoading(false); });
+    return () => { alive = false; };
+  }, [profile, commerceKind]);
+
+  const selectedCategory = categories.find((c) => c.id === businessCategoryId) ?? null;
+
+  const validateAccountForOtp = (): string | null => {
+    if (profile === 'client' && !fullName.trim()) return 'Indiquez votre nom complet.';
+    if (!phoneE164) return 'Indiquez un numéro valide (+242 suivi de 9 chiffres).';
+    if (!password || password.length < 6) return 'Le mot de passe doit contenir au moins 6 caractères.';
+    if (profile === 'vendeur' && !commerceKind) return 'Sélectionnez un type d\'établissement : restaurant ou boutique.';
+    if (profile === 'vendeur') {
+      if (!businessName.trim()) return 'Indiquez le nom du business.';
+      if (!businessCategoryId) return 'Sélectionnez une catégorie.';
+      if (!businessAddress.trim()) return 'Indiquez la localisation.';
+    }
+    return null;
+  };
+
+  const canSendOtp = !isSubmitting && !otpSent && Boolean(phoneE164) && Boolean(password) && password.length >= 6 && (profile === 'vendeur' || Boolean(fullName.trim()));
+  const canVerifyOtp = !isSubmitting && otpSent && Boolean(otp.trim()) && otp.trim().length >= 4;
+
+  const handleSendOtp = async () => {
+    setError(null);
+    const v = validateAccountForOtp();
+    if (v) { setError(v); return; }
+    setIsSubmitting(true);
+    try {
+      const otpResult = await requestOtp(phoneE164!);
+      setTestOtpCode(otpResult.testMode && otpResult.otpCode ? otpResult.otpCode : null);
+      setOtpSent(true);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Impossible d\'envoyer le code.'); }
+    finally { setIsSubmitting(false); }
+  };
+
+  const pickImage = async (folder: 'profiles' | 'enterprises') => {
+    setError(null);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) { setError('Autorisation refusée: accès aux photos requis.'); return null; }
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.82, base64: true, allowsEditing: true, aspect: [1, 1] });
+      if (result.canceled) return null;
+      const asset = result.assets?.[0];
+      if (!asset?.base64) { setError("Impossible de lire l'image sélectionnée."); return null; }
+      const mime = asset.mimeType || 'image/jpeg';
+      const dataUrl = `data:${mime};base64,${asset.base64}`;
+      return { previewUri: asset.uri, dataUrl };
+    } catch (e) { setError(e instanceof Error ? e.message : "Impossible de choisir l'image."); return null; }
+  };
+
+  const handleVerifyAndRegister = async () => {
+    setError(null);
+    if (!otpSent) { setError('Demandez d\'abord le code de vérification.'); return; }
+    if (!otp.trim() || otp.trim().length < 4) { setError('Saisissez le code reçu par SMS.'); return; }
+    const v = validateAccountForOtp();
+    if (v) { setError(v); return; }
+    setIsSubmitting(true);
+    try {
+      await verifyOtp({ telephone: phoneE164!, code: otp.trim() });
+      const userNom = profile === 'vendeur' ? businessName.trim() : fullName.trim();
+      let finalProfileImageUrl = profileImageUrl;
+      let finalBusinessImageUrl = businessImageUrl;
+      if (profileImageDataUrl) { finalProfileImageUrl = await uploadImageForSignup(null, { dataUrl: profileImageDataUrl, folder: 'profiles' }); }
+      if (profile === 'vendeur' && businessImageDataUrl) {
+        try { finalBusinessImageUrl = await uploadImageForSignup(null, { dataUrl: businessImageDataUrl, folder: 'enterprises' }); }
+        catch { finalBusinessImageUrl = null; }
+      }
+      const session = await registerAccount({
+        nom: userNom, telephone: phoneE164!, motDePasse: password, otpCode: otp.trim(), imageUrl: finalProfileImageUrl || null,
+        role: profile === 'vendeur' ? commerceKind === 'restaurant' ? 'restaurateur' : commerceKind === 'boutique' ? 'commercant' : 'client' : 'client',
+      });
+      await setSessionToken(session.token);
+      if (profile === 'client' && profileImageDataUrl && !finalProfileImageUrl) { finalProfileImageUrl = await uploadImageForSignup(session.token, { dataUrl: profileImageDataUrl, folder: 'profiles' }); }
+      if (profile === 'vendeur' && businessImageDataUrl && !finalBusinessImageUrl) {
+        try { finalBusinessImageUrl = await uploadImageForSignup(session.token, { dataUrl: businessImageDataUrl, folder: 'enterprises' }); }
+        catch { finalBusinessImageUrl = null; }
+      }
+      if (profile === 'client') { await new Promise<void>((r) => setTimeout(r, 0)); router.replace('/(tabs)'); return; }
+      if (!commerceKind) { setError("Type de commerce introuvable."); return; }
+      const enterprise = await createEnterpriseRemote(session.token, {
+        nom: businessName.trim(), type: commerceKind, categorieId: businessCategoryId!, description: businessDescription.trim() || null,
+        telephone: phoneE164!, adresse: businessAddress.trim(), imageUrl: finalBusinessImageUrl || null,
+        imageDataUrl: !finalBusinessImageUrl && businessImageDataUrl ? businessImageDataUrl : undefined,
+      });
+      await new Promise<void>((r) => setTimeout(r, 0));
+      const ent = enterprise as EnterpriseCreated;
+      if (ent.statut_moderation === 'en_attente') {
+        Alert.alert('Inscription enregistrée', 'Votre commerce est en attente de validation par GoLivra. Vous pouvez préparer votre catalogue dans l\'app ; il ne sera pas visible des clients et ne recevra pas de commandes tant qu\'un administrateur ne l\'aura pas activé.', [{ text: 'Continuer', onPress: () => router.replace(VENDOR_HREF.root) }]);
+        return;
+      }
+      router.replace(VENDOR_HREF.root);
+    } catch (e) { setError(e instanceof Error ? e.message : 'La création du compte a échoué.'); }
+    finally { setIsSubmitting(false); }
+  };
+
+  const resetOtpFlow = () => { setOtpSent(false); setOtp(''); setTestOtpCode(null); setError(null); };
+
+  return (
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <FeedbackOverlay />
+      <View style={[styles.heroGlow, { backgroundColor: colors.heroGlow }]} />
+      <KeyboardAvoidingView style={styles.keyboardContainer} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, Platform.OS === 'android' ? styles.scrollContentAndroid : undefined, keyboardVisible ? styles.scrollContentWithKeyboard : undefined]} keyboardShouldPersistTaps="always" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+          <View style={[styles.header, { backgroundColor: colors.background }]}>
+            {variant !== 'default' ? (
+              <View style={styles.headerTopRow}>
+                <Pressable style={styles.backButton} onPress={() => router.replace('/auth')}>
+                  <MaterialIcons name="arrow-back-ios-new" size={18} color={colors.primary} />
+                  <ThemedText style={[styles.backButtonText, { color: colors.primary }]}>Retour</ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
+            <View style={[styles.logoBadge, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Image source={require('@/assets/images/logo25292922882.png')} style={styles.appIcon} contentFit="contain" />
+            </View>
+            <ThemedText type="title">{headerCopy(variant).title}</ThemedText>
+            <ThemedText style={[styles.description, { color: colors.textSecondary }]}>{headerCopy(variant).description}</ThemedText>
+          </View>
+
+          <View style={[styles.formPage, { width }]}>
+            <View style={[styles.formCard, { width: formWidth, borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <View style={[styles.cardAccent, { backgroundColor: colors.primary }]} />
+              {error ? (
+                <View style={[styles.errorText, { backgroundColor: colors.errorSoft, borderColor: colors.border }]}>
+                  <ThemedText style={{ color: colors.error, fontWeight: '700' }}>{error}</ThemedText>
+                </View>
+              ) : null}
+
+              {profile === 'client' ? (
+                <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                  <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                    <MaterialIcons name="person" size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.inputBody}>
+                    <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Nom complet</ThemedText>
+                    <TextInput style={[styles.inputField, { color: colors.text }]} placeholder="Ex. : Jean Claude" placeholderTextColor={colors.placeholder} selectionColor={colors.primary} value={fullName} editable={!otpSent} onChangeText={setFullName} />
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                  <MaterialIcons name="call" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.inputBody}>
+                  <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Numéro de téléphone</ThemedText>
+                  <TextInput style={[styles.inputField, { color: colors.text }]} placeholder="+242 06 XXX XX XX" keyboardType="phone-pad" placeholderTextColor={colors.placeholder} selectionColor={colors.primary} value={phone} editable={!otpSent} autoCapitalize="none" autoCorrect={false} onChangeText={(text) => setPhone(formatCgPhone(text))} />
+                </View>
+              </View>
+
+              <ThemedText style={[styles.formHint, { color: colors.textMuted }]}>Un code de vérification sera envoyé par SMS.</ThemedText>
+
+              {profile === 'vendeur' && forcedProfile !== 'client' && commerceKind ? (() => {
+                const c = commerceCopy(commerceKind);
+                return (
+                  <>
+                    <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                      <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                        <MaterialIcons name={commerceKind === 'restaurant' ? 'restaurant' : 'storefront'} size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.inputBody}>
+                        <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>{commerceKind === 'restaurant' ? 'Nom du restaurant' : 'Nom du business'}</ThemedText>
+                        <TextInput style={[styles.inputField, { color: colors.text }]} placeholder={c.namePlaceholder} placeholderTextColor={colors.placeholder} selectionColor={colors.primary} value={businessName} editable={!otpSent} onChangeText={setBusinessName} />
+                      </View>
+                    </View>
+
+                    <Pressable disabled={otpSent || categoriesLoading} style={({ pressed }) => [styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }, pressed ? styles.buttonPressed : undefined, otpSent || categoriesLoading ? styles.buttonDisabled : undefined]} onPress={() => setCategoryPickerOpen(true)}>
+                      <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                        <MaterialIcons name="category" size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.inputBody}>
+                        <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>{c.detailsLabel}</ThemedText>
+                        <ThemedText style={[styles.inputField, { color: selectedCategory ? colors.text : colors.textMuted }]}>
+                          {categoriesLoading ? 'Chargement des catégories…' : selectedCategory?.nom || c.detailsPlaceholder}
+                        </ThemedText>
+                      </View>
+                      <MaterialIcons name="expand-more" size={22} color={colors.textMuted} />
+                    </Pressable>
+
+                    <CategoryPicker visible={categoryPickerOpen} title={c.detailsLabel} categories={categories} selectedId={businessCategoryId} onSelect={(cat) => setBusinessCategoryId(cat.id)} onClose={() => setCategoryPickerOpen(false)} />
+
+                    <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                      <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                        <MaterialIcons name="description" size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.inputBody}>
+                        <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Description (optionnel)</ThemedText>
+                        <TextInput style={[styles.inputField, { color: colors.text }]} placeholder={c.descriptionPlaceholder} placeholderTextColor={colors.placeholder} selectionColor={colors.primary} value={businessDescription} editable={!otpSent} onChangeText={setBusinessDescription} multiline />
+                      </View>
+                    </View>
+
+                    <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                      <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                        <MaterialIcons name="place" size={18} color={colors.primary} />
+                      </View>
+                      <View style={styles.inputBody}>
+                        <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Localisation</ThemedText>
+                        <TextInput style={[styles.inputField, { color: colors.text }]} placeholder={c.addressPlaceholder} placeholderTextColor={colors.placeholder} selectionColor={colors.primary} value={businessAddress} editable={!otpSent} onChangeText={setBusinessAddress} />
+                      </View>
+                    </View>
+
+                    <Pressable disabled={otpSent} style={({ pressed }) => [styles.imagePickCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }, pressed ? styles.buttonPressed : undefined, otpSent ? styles.buttonDisabled : undefined]} onPress={async () => { const r = await pickImage('enterprises'); if (!r) return; setBusinessImagePreview(r.previewUri); setBusinessImageDataUrl(r.dataUrl); setBusinessImageUrl(null); }}>
+                      <View style={styles.imagePickLeft}>
+                        <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                          <MaterialIcons name="image" size={18} color={colors.primary} />
+                        </View>
+                        <View style={styles.inputBody}>
+                          <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>{commerceKind === 'restaurant' ? 'Logo du restaurant' : 'Logo de la boutique'}</ThemedText>
+                          <ThemedText style={[styles.imagePickHint, { color: colors.textMuted }]}>{businessImagePreview ? 'Image sélectionnée' : 'Choisir une image'}</ThemedText>
+                        </View>
+                      </View>
+                      <View style={styles.imagePickRight}>
+                        {businessImagePreview ? <Image source={{ uri: businessImagePreview }} style={[styles.imageThumb, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]} contentFit="cover" /> : null}
+                        <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+                      </View>
+                    </Pressable>
+                  </>
+                );
+              })() : null}
+
+              <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                  <MaterialIcons name="lock" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.inputBody}>
+                  <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Mot de passe</ThemedText>
+                  <TextInput style={[styles.inputField, { color: colors.text }]} placeholder="Minimum 6 caractères" secureTextEntry={!passwordVisible} placeholderTextColor={colors.placeholder} selectionColor={colors.primary} autoCapitalize="none" autoCorrect={false} textContentType="newPassword" value={password} editable={!otpSent} onChangeText={setPassword} />
+                </View>
+                <Pressable style={styles.eyeButton} onPress={() => setPasswordVisible((v) => !v)} hitSlop={10}>
+                  <MaterialIcons name={passwordVisible ? 'visibility-off' : 'visibility'} size={20} color={colors.textMuted} />
+                </Pressable>
+              </View>
+
+              {profile === 'client' ? (
+                <Pressable disabled={otpSent} style={({ pressed }) => [styles.imagePickCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }, pressed ? styles.buttonPressed : undefined, otpSent ? styles.buttonDisabled : undefined]} onPress={async () => { const r = await pickImage('profiles'); if (!r) return; setProfileImagePreview(r.previewUri); setProfileImageDataUrl(r.dataUrl); setProfileImageUrl(null); }}>
+                  <View style={styles.imagePickLeft}>
+                    <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                      <MaterialIcons name="image" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.inputBody}>
+                      <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Photo de profil (optionnel)</ThemedText>
+                      <ThemedText style={[styles.imagePickHint, { color: colors.textMuted }]}>{profileImagePreview ? 'Image sélectionnée' : 'Choisir une image'}</ThemedText>
+                    </View>
+                  </View>
+                  <View style={styles.imagePickRight}>
+                    {profileImagePreview ? <Image source={{ uri: profileImagePreview }} style={[styles.imageThumb, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]} contentFit="cover" /> : null}
+                    <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+                  </View>
+                </Pressable>
+              ) : null}
+
+              {otpSent ? (
+                <>
+                  <ThemedText style={[styles.sectionTitle, { color: colors.primary }]}>Vérification</ThemedText>
+                  {testOtpCode ? <ThemedText style={[styles.testOtpHint, { color: colors.primary }]}>Mode test actif - code OTP: {testOtpCode}</ThemedText> : null}
+                  <View style={[styles.inputCard, { borderColor: colors.inputBorder, backgroundColor: colors.inputBg }]}>
+                    <View style={[styles.inputIcon, { backgroundColor: colors.primarySoft, borderColor: colors.borderStrong }]}>
+                      <MaterialIcons name="sms" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.inputBody}>
+                      <ThemedText style={[styles.inputLabel, { color: colors.textSecondary }]}>Code SMS</ThemedText>
+                      <TextInput style={[styles.inputField, { color: colors.text }]} placeholder="Ex. : 123456" keyboardType="number-pad" placeholderTextColor={colors.placeholder} selectionColor={colors.primary} value={otp} onChangeText={setOtp} />
+                    </View>
+                  </View>
+                  <Pressable style={({ pressed }) => [styles.submitButton, { backgroundColor: colors.primary }, pressed ? styles.buttonPressed : undefined, isSubmitting ? styles.buttonDisabled : undefined]} disabled={!canVerifyOtp} onPress={handleVerifyAndRegister}>
+                    <ThemedText style={styles.submitButtonText}>{isSubmitting ? 'Création du compte…' : 'Valider et créer le compte'}</ThemedText>
+                  </Pressable>
+                  <Pressable style={({ pressed }) => [styles.secondaryButton, { backgroundColor: colors.primarySoft }, pressed ? styles.buttonPressed : undefined]} onPress={resetOtpFlow}>
+                    <ThemedText style={[styles.secondaryButtonText, { color: colors.primary }]}>Modifier les informations</ThemedText>
+                  </Pressable>
+                </>
+              ) : (
+                <Pressable style={({ pressed }) => [styles.submitButton, { backgroundColor: colors.primary }, pressed ? styles.buttonPressed : undefined, isSubmitting ? styles.buttonDisabled : undefined, !canSendOtp ? styles.buttonDisabled : undefined]} disabled={!canSendOtp} onPress={handleSendOtp}>
+                  <ThemedText style={styles.submitButtonText}>{isSubmitting ? 'Envoi en cours…' : 'Recevoir le code par SMS'}</ThemedText>
+                </Pressable>
+              )}
+
+              <Pressable style={({ pressed }) => [styles.secondaryButton, { backgroundColor: colors.primarySoft }, pressed ? styles.buttonPressed : undefined]} onPress={() => router.replace('/auth')}>
+                <ThemedText style={[styles.secondaryButtonText, { color: colors.primary }]}>J'ai déjà un compte</ThemedText>
+              </Pressable>
+
+              <ThemedText style={[styles.formHint, { color: colors.textMuted }]}>Vos données sont traitées conformément à notre politique de confidentialité.</ThemedText>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ThemedView>
+  );
+}
+
+export default function SignupScreen() {
+  return <SignupScreenBase variant="default" forcedProfile="client" />;
+}
+
+export function SignupCommerceScreen({ kind }: { kind: CommerceKind }) {
+  return <SignupScreenBase variant={kind} forcedProfile="vendeur" />;
+}
+
+export function SignupClientOnlyScreen() {
+  return <SignupScreenBase variant="default" forcedProfile="client" />;
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  heroGlow: { position: 'absolute', top: -140, left: -80, width: 360, height: 360, borderRadius: 220 },
+  keyboardContainer: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: 'flex-start', paddingTop: 24, paddingBottom: 36 },
+  scrollContentAndroid: { paddingBottom: 130 },
+  scrollContentWithKeyboard: { paddingBottom: 320 },
+  header: { paddingHorizontal: 20, gap: 8, alignItems: 'center', marginBottom: 4 },
+  headerTopRow: { width: '100%', flexDirection: 'row', justifyContent: 'flex-start' },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, paddingVertical: 12, paddingHorizontal: 12, borderRadius: 999 },
+  backButtonText: { fontWeight: '800', fontSize: 14 },
+  logoBadge: { width: 104, height: 104, borderRadius: 999, borderWidth: 1, alignItems: 'center', justifyContent: 'center', elevation: 4 },
+  appIcon: { width: 92, height: 92 },
+  description: { opacity: 0.8, textAlign: 'center', maxWidth: 340 },
+  formPage: { paddingHorizontal: 20, marginTop: 22, alignItems: 'center' },
+  formCard: { borderWidth: 1.2, borderRadius: 24, padding: 18, gap: 12, elevation: 6 },
+  cardAccent: { height: 4, width: 54, borderRadius: 99, alignSelf: 'center', marginBottom: 4, opacity: 0.9 },
+  inputCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 12, elevation: 4 },
+  inputIcon: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  inputBody: { flex: 1, gap: 4 },
+  inputLabel: { fontSize: 12, fontWeight: '800', opacity: 0.9 },
+  inputField: { paddingVertical: 0, fontSize: 15 },
+  eyeButton: { paddingHorizontal: 4, paddingVertical: 6 },
+  imagePickCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderWidth: 1, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 12, elevation: 4 },
+  imagePickLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  imagePickRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  imagePickHint: { fontSize: 12, lineHeight: 16 },
+  imageThumb: { width: 34, height: 34, borderRadius: 10, borderWidth: 1 },
+  errorText: { fontWeight: '700', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14 },
+  sectionTitle: { marginTop: 10, fontSize: 14, fontWeight: '800', letterSpacing: 0.35, textTransform: 'uppercase' },
+  buttonDisabled: { opacity: 0.65 },
+  buttonPressed: { opacity: 0.88, transform: [{ scale: 0.995 }] },
+  submitButton: { marginTop: 10, borderRadius: 16, paddingVertical: 15, alignItems: 'center', elevation: 6 },
+  submitButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  secondaryButton: { marginTop: 8, borderRadius: 16, paddingVertical: 14, alignItems: 'center' },
+  secondaryButtonText: { fontWeight: '700', fontSize: 15 },
+  formHint: { marginTop: 2, fontSize: 12, lineHeight: 16, textAlign: 'center' },
+  testOtpHint: { marginTop: 2, marginBottom: 2, fontWeight: '700', textAlign: 'center' },
+});
