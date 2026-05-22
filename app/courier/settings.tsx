@@ -13,6 +13,8 @@ import {
 import { ChevronLeft, Eye, EyeOff, Lock, Smartphone, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppContentWidth } from '@/components/app-content-width';
+import { ThemeModePicker } from '@/components/theme-mode-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { LUCIDE_STROKE } from '@/constants/icons';
@@ -180,6 +182,7 @@ export default function CourierSettingsScreen() {
               <ThemedText style={[styles.secondaryBtnText, { color: palette.primary }]}>Mettre à jour le mot de passe</ThemedText>
             )}
           </Pressable>
+          </AppContentWidth>
         </ScrollView>
       </KeyboardAvoidingView>
     </ThemedView>

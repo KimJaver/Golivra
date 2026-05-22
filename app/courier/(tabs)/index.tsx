@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, S
 import { Bell, ChevronRight, MapPin, Package } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppContentWidth } from '@/components/app-content-width';
 import { CourierHero } from '@/components/courier/courier-hero';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -75,6 +76,7 @@ export default function CourierHomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={palette.primary} />}
         contentContainerStyle={[styles.scroll, { paddingTop: Math.max(insets.top, 12), paddingBottom: bottom }]}>
+        <AppContentWidth phonePadding={0}>
         <View style={styles.heroRow}>
           <View style={{ flex: 1 }}>
           <CourierHero
@@ -190,6 +192,7 @@ export default function CourierHomeScreen() {
             </Pressable>
           ))
         )}
+        </AppContentWidth>
       </ScrollView>
     </ThemedView>
   );

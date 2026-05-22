@@ -1,17 +1,6 @@
-const DEFAULT_API_ORIGIN = 'https://golivraback.onrender.com';
+import { getApiOrigin } from '@/lib/config';
 
-/**
- * Base URL du serveur API (sans suffixe /api).
- * Priorité : EXPO_PUBLIC_API_BASE_URL (build-time) → fallback codé en dur.
- */
-export function getApiOrigin(): string {
-  const raw = process.env.EXPO_PUBLIC_API_BASE_URL;
-  let origin = (raw || DEFAULT_API_ORIGIN).trim().replace(/\/+$/, '');
-  if (origin.toLowerCase().endsWith('/api')) {
-    origin = origin.slice(0, -4);
-  }
-  return origin;
-}
+export { getApiOrigin };
 
 export function apiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
@@ -31,7 +20,7 @@ function extractErrorMessage(parsed: unknown, text: string, status: number): str
   const trimmed = text.trim();
   if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
     if (status === 404) {
-      return `Route API introuvable (${status}). Vérifiez EXPO_PUBLIC_API_BASE_URL et que le backend Render est à jour.`;
+      return `Route API introuvable (${status}). Vérifiez que le backend Render est déployé.`;
     }
     return `Réponse HTML inattendue du serveur (${status}). Vérifiez l'URL de l'API.`;
   }
@@ -39,6 +28,15 @@ function extractErrorMessage(parsed: unknown, text: string, status: number): str
     return `Endpoint API indisponible : ${trimmed.slice(0, 120)}`;
   }
   return trimmed || `Erreur HTTP ${status}`;
+}
+
+function networkErrorMessage(cause: unknown): string {
+  const origin = getApiOrigin();
+  const msg = cause instanceof Error ? cause.message : String(cause);
+  if (/network request failed|failed to fetch|unable to resolve host|econnrefused|timeout/i.test(msg)) {
+    return `Connexion impossible au serveur (${origin}). Vérifiez votre connexion Internet. En build APK, l'URL doit être en HTTPS (production : golivraback.onrender.com).`;
+  }
+  return msg || 'Erreur réseau.';
 }
 
 export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions = {}): Promise<T> {
@@ -55,11 +53,17 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     headers.set('authorization', `Bearer ${token}`);
   }
 
-  const res = await fetch(apiUrl(path), {
-    ...rest,
-    headers,
-    body: finalBody,
-  });
+  const url = apiUrl(path);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...rest,
+      headers,
+      body: finalBody,
+    });
+  } catch (cause) {
+    throw new Error(networkErrorMessage(cause));
+  }
 
   const text = await res.text();
   let parsed: unknown = null;
@@ -75,7 +79,7 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     const msg = extractErrorMessage(parsed, text, res.status);
     if (res.status === 404 && msg.includes('Route API introuvable')) {
       throw new Error(
-        `${msg} URL appelée : ${apiUrl(path).replace(/\/\/[^/]+/, '//…')}. Vérifiez EXPO_PUBLIC_API_BASE_URL (sans /api à la fin).`,
+        `${msg} URL : ${url.replace(/\/\/[^/]+/, '//…')}. Base API : ${getApiOrigin()}`,
       );
     }
     throw new Error(msg);

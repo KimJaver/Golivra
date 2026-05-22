@@ -28,6 +28,7 @@ import { ThemedView } from '@/components/themed-view';
 import { brandGradient3 } from '@/constants/app-palette';
 import { createMarketplaceStyles } from '@/constants/marketplace-screen-styles';
 import { LUCIDE_STROKE } from '@/constants/icons';
+import { useResponsiveLayout } from '@/hooks/use-responsive-layout';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { useThemedStyles } from '@/hooks/use-themed-styles';
 import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
@@ -77,6 +78,7 @@ export default function MarketplaceListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { gridColumns, contentWidth, isTablet } = useResponsiveLayout();
   const params = useLocalSearchParams<{ q?: string; type?: string }>();
   const colors = useAppColors();
   const styles = useThemedStyles(createMarketplaceStyles);
@@ -192,7 +194,8 @@ export default function MarketplaceListScreen() {
 
   const bottomPad = Math.max(insets.bottom, 12) + TAB_BAR_CONTENT_PADDING_BOTTOM;
   const gridGap = 10;
-  const gridCol = (width - 40 - gridGap) / 2;
+  const gridPad = isTablet ? Math.max(24, (width - contentWidth) / 2) + 20 : 20;
+  const gridCol = (Math.min(width, contentWidth) - gridPad * 2 - gridGap * (gridColumns - 1)) / gridColumns;
 
   return (
     <ThemedView style={styles.screen}>

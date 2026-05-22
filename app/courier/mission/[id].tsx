@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { ArrowLeft, CheckCircle2, MapPin, Store } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppContentWidth } from '@/components/app-content-width';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { LUCIDE_STROKE } from '@/constants/icons';
@@ -25,6 +26,7 @@ export default function CourierMissionDetailScreen() {
   const insets = useSafeAreaInsets();
   const palette = useCourierPalette();
   const { missions, refresh } = useCourier();
+  const { showSuccess, showError, FeedbackOverlay } = useActionFeedback();
   const [mission, setMission] = useState<CourierMission | null>(null);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +130,10 @@ export default function CourierMissionDetailScreen() {
           )}
         </View>
       ) : (
-        <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
+          <AppContentWidth phonePadding={0}>
           <View style={[styles.hero, { backgroundColor: palette.card, borderColor: palette.border }]}>
             <ThemedText style={[styles.ref, { color: palette.text }]}>
               {mission.type_livraison === 'externe'
@@ -201,6 +206,7 @@ export default function CourierMissionDetailScreen() {
           ) : !canAccept ? (
             <ThemedText style={[styles.hint, { color: palette.muted }]}>Course assignée — récupérez la commande puis validez la livraison.</ThemedText>
           ) : null}
+          </AppContentWidth>
         </ScrollView>
       )}
     </ThemedView>

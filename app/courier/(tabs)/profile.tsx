@@ -1,6 +1,9 @@
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { ChevronRight, Lock, LogOut, Settings, User } from 'lucide-react-native';
+
+import { AppContentWidth } from '@/components/app-content-width';
+import { ThemeModePicker } from '@/components/theme-mode-picker';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -43,7 +46,10 @@ export default function CourierProfileScreen() {
 
   return (
     <ThemedView style={styles.screen} lightColor={palette.bg} darkColor={palette.bg}>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: Math.max(insets.top, 12), paddingBottom: bottom }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingTop: Math.max(insets.top, 12), paddingBottom: bottom }]}>
+        <AppContentWidth phonePadding={0}>
         <View style={[styles.headerCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
           {avatar ? (
             <Image source={{ uri: avatar }} style={styles.avatar} contentFit="cover" />
@@ -75,6 +81,12 @@ export default function CourierProfileScreen() {
             />
           </View>
         </View>
+
+        <ThemeModePicker
+          palette={palette}
+          title="Mode clair / sombre"
+          hint="Choisissez l’apparence de l’espace livreur (clair, sombre ou selon le téléphone)."
+        />
 
         <View style={[styles.menu, { backgroundColor: palette.card, borderColor: palette.border }]}>
           <MenuItem
@@ -138,7 +150,7 @@ function MenuItem({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  scroll: { paddingHorizontal: 18, gap: 14 },
+  scroll: { paddingHorizontal: 18, gap: 14, flexGrow: 1 },
   headerCard: {
     alignItems: 'center',
     borderRadius: 24,

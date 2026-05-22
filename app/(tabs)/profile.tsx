@@ -33,6 +33,7 @@ import { isMerchantRole } from '@/lib/roles';
 import { VENDOR_HREF } from '@/lib/vendor-nav';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useActionFeedback } from '@/hooks/use-action-feedback';
+import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
 import { useAppColors } from '@/hooks/use-app-colors';
 
 type Me = AuthMe;
@@ -89,7 +90,7 @@ export default function ProfileScreen() {
         })
       : null;
 
-  const bottomPad = Math.max(insets.bottom, 8) + 88;
+  const bottomPad = Math.max(insets.bottom, 12) + TAB_BAR_CONTENT_PADDING_BOTTOM;
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const menuRow = (Icon: LucideIcon, title: string, subtitle: string, onPress: () => void) => (

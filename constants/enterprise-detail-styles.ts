@@ -5,7 +5,7 @@ import type { AppPalette } from '@/constants/app-palette';
 export function createEnterpriseDetailStyles(c: AppPalette) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: c.background },
-    scroll: { paddingBottom: 24 },
+    scroll: { paddingBottom: 48, flexGrow: 1 },
     center: {
       flex: 1,
       alignItems: 'center',

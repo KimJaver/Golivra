@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { MapPin, Store } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppContentWidth } from '@/components/app-content-width';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { COURIER_TAB_BAR_PADDING_BOTTOM } from '@/constants/courier-layout';
@@ -47,7 +48,9 @@ export default function CourierMissionsScreen() {
             tintColor={palette.primary}
           />
         }
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingTop: Math.max(insets.top, 12), paddingBottom: bottom }]}>
+        <AppContentWidth phonePadding={0}>
         <ThemedText type="title" style={[styles.title, { color: palette.primaryDeep }]}>
           Mes courses
         </ThemedText>
@@ -76,6 +79,7 @@ export default function CourierMissionsScreen() {
             <MissionCard key={m.id} mission={m} muted onPress={() => router.push(hrefCourierMission(m.id))} palette={palette} />
           ))
         )}
+        </AppContentWidth>
       </ScrollView>
     </ThemedView>
   );
