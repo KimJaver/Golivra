@@ -99,7 +99,9 @@ function MissionCard({
   return (
     <Pressable style={[styles.card, muted ? styles.cardMuted : undefined, { backgroundColor: palette.card, borderColor: palette.border }]} onPress={onPress}>
       <View style={styles.cardTop}>
-        <ThemedText style={[styles.ref, { color: muted ? palette.muted : palette.text }]}>{mission.commande?.numero || mission.id.slice(0, 8).toUpperCase()}</ThemedText>
+        <ThemedText style={[styles.ref, { color: muted ? palette.muted : palette.text }]}>
+          {mission.commerce_nom || mission.commande?.numero || mission.id.slice(0, 8).toUpperCase()}
+        </ThemedText>
         <ThemedText style={[styles.statut, muted ? styles.statutMuted : undefined, { color: muted ? palette.muted : palette.primary }]}>
           {missionStatutLabel(mission.statut)}
         </ThemedText>

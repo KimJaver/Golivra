@@ -4,6 +4,7 @@ export type CourierMission = {
   id: string;
   statut: string;
   type_livraison?: 'commande' | 'externe';
+  sous_commande_id?: string | null;
   created_at: string;
   attribuee_at?: string | null;
   livree_at?: string | null;

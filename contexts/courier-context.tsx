@@ -39,6 +39,28 @@ type CourierContextValue = {
 
 const CourierContext = createContext<CourierContextValue | null>(null);
 
+/** Évite d’afficher plusieurs livraisons en double pour la même sous-commande. */
+function dedupeCourierMissions(rows: CourierMission[]): CourierMission[] {
+  const byKey = new Map<string, CourierMission>();
+  for (const m of rows) {
+    const key = m.sous_commande_id || m.id;
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, m);
+      continue;
+    }
+    if (m.ouverte && m.statut === 'en_attente') {
+      byKey.set(key, m);
+      continue;
+    }
+    if (prev.ouverte && prev.statut === 'en_attente') continue;
+    const prevTs = new Date(prev.created_at).getTime();
+    const curTs = new Date(m.created_at).getTime();
+    if (curTs > prevTs) byKey.set(key, m);
+  }
+  return [...byKey.values()];
+}
+
 function profileFromAuthMe(me: AuthMeLivreur): CourierProfile | null {
   if (!me.livreur) return null;
   return {
@@ -90,12 +112,13 @@ export function CourierProvider({ children }: { children: ReactNode }) {
       rows = [];
     }
 
-    const active = rows.filter((m) => m.statut !== 'livree' && m.statut !== 'annulee');
+    const deduped = dedupeCourierMissions(rows);
+    const active = deduped.filter((m) => m.statut !== 'livree' && m.statut !== 'annulee');
     prof = {
       ...prof,
       resume: {
         missions_actives: active.length,
-        missions_aujourdhui: rows.filter((m) => {
+        missions_aujourdhui: deduped.filter((m) => {
           const d = new Date();
           d.setHours(0, 0, 0, 0);
           return m.created_at >= d.toISOString();
@@ -106,7 +129,7 @@ export function CourierProvider({ children }: { children: ReactNode }) {
     };
 
     setProfile(prof);
-    setMissions(rows);
+    setMissions(deduped);
   }, []);
 
   const load = useCallback(async () => {

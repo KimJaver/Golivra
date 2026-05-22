@@ -140,7 +140,7 @@ export default function CourierHomeScreen() {
               <Pressable key={m.id} style={[styles.missionCard, styles.openCard]} onPress={() => router.push(hrefCourierMission(m.id))}>
                 <View style={styles.missionTop}>
                   <ThemedText style={[styles.missionRef, { color: palette.text }]}>
-                    {m.commande?.numero || m.id.slice(0, 8).toUpperCase()}
+                    {m.commerce_nom || m.commande?.numero || m.id.slice(0, 8).toUpperCase()}
                   </ThemedText>
                   <View style={[styles.statutPill, { backgroundColor: '#FEF3C7' }]}>
                     <ThemedText style={[styles.statutText, { color: '#92400E' }]}>Nouvelle</ThemedText>
@@ -174,7 +174,7 @@ export default function CourierHomeScreen() {
             <Pressable key={m.id} style={[styles.missionCard, { backgroundColor: palette.card, borderColor: palette.border }]} onPress={() => router.push(hrefCourierMission(m.id))}>
               <View style={styles.missionTop}>
                 <ThemedText style={[styles.missionRef, { color: palette.text }]}>
-                  {m.commande?.numero || m.id.slice(0, 8).toUpperCase()}
+                  {m.commerce_nom || m.commande?.numero || m.id.slice(0, 8).toUpperCase()}
                 </ThemedText>
                 <View style={[styles.statutPill, { backgroundColor: palette.primarySoft }]}>
                   <ThemedText style={[styles.statutText, { color: palette.primary }]}>{missionStatutLabel(m.statut)}</ThemedText>

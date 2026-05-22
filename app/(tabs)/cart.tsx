@@ -2,7 +2,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -251,6 +251,7 @@ export default function CartScreen() {
       showError('Session expirée', 'Reconnectez-vous pour passer commande.');
       return;
     }
+    orderInFlight.current = true;
     setSubmitting(true);
     try {
       const created = await apiFetch<{ id: string }>('/api/orders', {
@@ -319,6 +320,7 @@ export default function CartScreen() {
     } catch (e) {
       showError('Commande impossible', e instanceof Error ? e.message : 'Échec de la commande.');
     } finally {
+      orderInFlight.current = false;
       setSubmitting(false);
     }
   };
