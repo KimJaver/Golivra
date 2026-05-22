@@ -16,6 +16,7 @@ import {
   type CourierMission,
 } from '@/lib/courier-api';
 import { getSessionToken } from '@/lib/auth';
+import { useActionFeedback } from '@/hooks/use-action-feedback';
 import { useCourierPalette } from '@/lib/courier-theme';
 
 export default function CourierMissionDetailScreen() {
@@ -52,10 +53,13 @@ export default function CourierMissionDetailScreen() {
     setError(null);
     try {
       const updated = await acceptCourierMission(token, id);
-      setMission(updated);
+      setMission({ ...updated, ouverte: false });
       await refresh();
+      showSuccess('Course acceptée !', 'Vous pouvez récupérer la commande chez le commerce.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Impossible d\'accepter la course.');
+      const msg = e instanceof Error ? e.message : 'Impossible d\'accepter la course.';
+      setError(msg);
+      showError('Acceptation impossible', msg);
     } finally {
       setActing(false);
     }
@@ -71,8 +75,14 @@ export default function CourierMissionDetailScreen() {
       const updated = await advanceCourierMission(token, id);
       setMission(updated);
       await refresh();
+      showSuccess(
+        updated.statut === 'en_route' ? 'En route !' : 'Collecte enregistrée',
+        updated.statut === 'en_route' ? 'Direction le client.' : 'Récupération confirmée chez le commerce.',
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Impossible de mettre à jour la course.');
+      const msg = e instanceof Error ? e.message : 'Impossible de mettre à jour la course.';
+      setError(msg);
+      showError('Mise à jour impossible', msg);
     } finally {
       setActing(false);
     }
@@ -88,8 +98,11 @@ export default function CourierMissionDetailScreen() {
       const updated = await completeCourierMission(token, id);
       setMission(updated);
       await refresh();
+      showSuccess('Livraison terminée !', 'Bonne course, merci.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Impossible de valider la livraison.');
+      const msg = e instanceof Error ? e.message : 'Impossible de valider la livraison.';
+      setError(msg);
+      showError('Finalisation impossible', msg);
     } finally {
       setActing(false);
     }
@@ -97,6 +110,7 @@ export default function CourierMissionDetailScreen() {
 
   return (
     <ThemedView style={styles.screen} lightColor={palette.bg} darkColor={palette.bg}>
+      <FeedbackOverlay />
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 8), backgroundColor: palette.card, borderBottomColor: palette.border }]}>
         <Pressable onPress={() => router.back()} style={[styles.back, { backgroundColor: palette.primarySoft }]} hitSlop={12}>
           <ArrowLeft size={22} color={palette.primaryDeep} strokeWidth={LUCIDE_STROKE} />
