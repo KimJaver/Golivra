@@ -47,7 +47,7 @@ export default function HowMultiDeliveryScreen() {
             Frais de livraison
           </ThemedText>
           <ThemedText style={[styles.p, { color: colors.textSecondary }]}>
-            Chaque sous-commande a ses propres frais de livraison, car un livreur est mobilisé par dépôt. Le total affiché
+            Chaque commerce a ses propres frais de livraison, car un livreur est mobilisé à chaque fois. Le total affiché
             dans votre panier additionne ces frais.
           </ThemedText>
         </View>

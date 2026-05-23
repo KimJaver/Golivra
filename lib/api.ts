@@ -1,4 +1,5 @@
 import { getApiOrigin } from '@/lib/config';
+import { UX_ERRORS, friendlyErrorMessage } from '@/lib/ux-copy';
 
 export { getApiOrigin };
 
@@ -15,28 +16,22 @@ export type ApiFetchOptions = RequestInit & {
 
 function extractErrorMessage(parsed: unknown, text: string, status: number): string {
   if (typeof parsed === 'object' && parsed !== null && 'message' in parsed) {
-    return String((parsed as { message: unknown }).message);
+    return friendlyErrorMessage(String((parsed as { message: unknown }).message));
   }
   const trimmed = text.trim();
   if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
-    if (status === 404) {
-      return `Route API introuvable (${status}). Vérifiez que le backend Render est déployé.`;
-    }
-    return `Réponse HTML inattendue du serveur (${status}). Vérifiez l'URL de l'API.`;
+    return UX_ERRORS.generic;
   }
   if (trimmed.toLowerCase().includes('cannot post')) {
-    return `Endpoint API indisponible : ${trimmed.slice(0, 120)}`;
+    return UX_ERRORS.generic;
   }
-  return trimmed || `Erreur HTTP ${status}`;
+  if (status === 401) return UX_ERRORS.session;
+  if (status === 403) return UX_ERRORS.forbidden;
+  return friendlyErrorMessage(trimmed || UX_ERRORS.generic);
 }
 
 function networkErrorMessage(cause: unknown): string {
-  const origin = getApiOrigin();
-  const msg = cause instanceof Error ? cause.message : String(cause);
-  if (/network request failed|failed to fetch|unable to resolve host|econnrefused|timeout/i.test(msg)) {
-    return `Connexion impossible au serveur (${origin}). Vérifiez votre connexion Internet. En build APK, l'URL doit être en HTTPS (production : golivraback.onrender.com).`;
-  }
-  return msg || 'Erreur réseau.';
+  return friendlyErrorMessage(cause, UX_ERRORS.network);
 }
 
 export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions = {}): Promise<T> {
@@ -76,13 +71,7 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
   }
 
   if (!res.ok) {
-    const msg = extractErrorMessage(parsed, text, res.status);
-    if (res.status === 404 && msg.includes('Route API introuvable')) {
-      throw new Error(
-        `${msg} URL : ${url.replace(/\/\/[^/]+/, '//…')}. Base API : ${getApiOrigin()}`,
-      );
-    }
-    throw new Error(msg);
+    throw new Error(extractErrorMessage(parsed, text, res.status));
   }
 
   return parsed as T;

@@ -181,7 +181,7 @@ export default function CartScreen() {
     if (!code || !cart) return;
     const token = await getSessionToken();
     if (!token) {
-      showError('Session expirée', 'Reconnectez-vous pour utiliser un code promo.');
+      showError('Connexion requise', 'Reconnectez-vous pour utiliser un code promo.');
       return;
     }
     setPromoLoading(true);
@@ -248,7 +248,7 @@ export default function CartScreen() {
     const adresseText = formatDeliveryAddressText(address);
     const token = await getSessionToken();
     if (!token) {
-      showError('Session expirée', 'Reconnectez-vous pour passer commande.');
+      showError('Connexion requise', 'Reconnectez-vous pour passer commande.');
       return;
     }
     orderInFlight.current = true;
@@ -353,7 +353,7 @@ export default function CartScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.scroll, { paddingTop: Math.max(insets.top, 14), paddingBottom: bottomPad }]}>
           <ThemedText type="title" style={[styles.title, { color: colors.text }]}>
-            Panier
+            Votre panier
           </ThemedText>
 
           {!hasItems ? (
@@ -361,7 +361,7 @@ export default function CartScreen() {
               <View style={[styles.emptyIcon, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}>
                 <ShoppingBag size={28} color={colors.primary} strokeWidth={LUCIDE_STROKE} />
               </View>
-              <ThemedText style={[styles.emptyTitle, { color: colors.primaryDeep }]}>Panier vide</ThemedText>
+              <ThemedText style={[styles.emptyTitle, { color: colors.primaryDeep }]}>Votre panier est vide</ThemedText>
               <ThemedText style={[styles.emptyBody, { color: colors.textMuted }]}>
                 Ajoutez des articles depuis une fiche commerce du marketplace.
               </ThemedText>
@@ -369,7 +369,7 @@ export default function CartScreen() {
                 style={[styles.cta, { backgroundColor: colors.primary }]}
                 onPress={() => router.push('/(tabs)/marketplace')}
                 android_ripple={{ color: 'rgba(255,255,255,0.2)' }}>
-                <ThemedText style={[styles.ctaText, { color: colors.onPrimary }]}>Ouvrir le marketplace</ThemedText>
+                <ThemedText style={[styles.ctaText, { color: colors.onPrimary }]}>Voir les commerces</ThemedText>
               </Pressable>
             </View>
           ) : (
@@ -596,7 +596,7 @@ export default function CartScreen() {
               </Pressable>
 
               <ThemedText style={[styles.legalHint, { color: colors.textMuted }]}>
-                Une commande groupée : chaque restaurant ou boutique reçoit sa sous-commande et gère sa partie.
+                Commande groupée : chaque restaurant ou boutique prépare et livre sa partie séparément.
               </ThemedText>
             </>
           )}

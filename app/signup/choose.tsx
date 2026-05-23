@@ -32,7 +32,7 @@ export default function SignupChooseScreen() {
           <View style={styles.header}>
             <Image source={require('@/assets/images/logo25292922882.png')} style={styles.logo} contentFit="contain" />
             <ThemedText type="title">Créer un compte</ThemedText>
-            <ThemedText style={[styles.description, { color: colors.textSecondary }]}>Choisissez le type de compte qui vous correspond</ThemedText>
+            <ThemedText style={[styles.description, { color: colors.textSecondary }]}>Comment souhaitez-vous utiliser GoLivra ?</ThemedText>
           </View>
 
           <View style={[styles.choices, { width: cardWidth }]}>

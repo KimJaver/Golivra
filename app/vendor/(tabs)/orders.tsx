@@ -19,22 +19,13 @@ import { getSessionToken } from '@/lib/auth';
 import { livraisonStatutLabel } from '@/lib/vendor-api';
 import type { VendorPalette } from '@/lib/vendor-theme';
 import type { VendorOrder, VendorOrderStatus } from '@/lib/vendor-types';
+import { vendorOrderStatusLabel } from '@/lib/ux-copy';
 import { hrefVendorOrder } from '@/lib/vendor-nav';
 
 type FilterKey = 'all' | 'prep' | 'ship';
 
 function statusLabel(s: VendorOrderStatus): string {
-  const m: Record<VendorOrderStatus, string> = {
-    en_attente: 'Nouvelle',
-    acceptee: 'Acceptée',
-    a_preparer: 'À préparer',
-    en_preparation: 'En préparation',
-    prete: 'Prête — GoLivra',
-    en_livraison: 'En livraison GoLivra',
-    livree: 'Livrée',
-    annulee: 'Annulée',
-  };
-  return m[s];
+  return vendorOrderStatusLabel(s);
 }
 
 function statusStyle(s: VendorOrderStatus, colors: ReturnType<typeof useAppColors>) {
@@ -164,7 +155,7 @@ export default function VendorOrdersTabScreen() {
                   </ThemedText>
                   {(o.statut === 'prete' || o.statut === 'en_livraison') && o.livraison_statut ? (
                     <ThemedText style={[styles.deliveryHint, { color: colors.primary }]} numberOfLines={1}>
-                      GoLivra · {livraisonStatutLabel(o.livraison_statut)}
+                      Livraison · {livraisonStatutLabel(o.livraison_statut)}
                     </ThemedText>
                   ) : null}
                   <View style={styles.cardBottom}>

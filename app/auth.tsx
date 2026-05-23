@@ -22,6 +22,7 @@ import { loginAccount, setSessionToken } from '@/lib/auth';
 import { prefetchClientCatalog } from '@/lib/client-data';
 import { formatCgPhone, toCgE164 } from '@/lib/phone';
 import { homeHrefForRole } from '@/lib/roles';
+import { UX_ERRORS, friendlyErrorMessage } from '@/lib/ux-copy';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -71,8 +72,7 @@ export default function AuthScreen() {
       void import('@/lib/cart-local').then((m) => m.syncCartWithServer());
       router.replace(homeHrefForRole(session.user.role));
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Connexion impossible.';
-      setError(message);
+      setError(friendlyErrorMessage(e, UX_ERRORS.auth));
     } finally {
       setIsSubmitting(false);
     }
@@ -106,7 +106,7 @@ export default function AuthScreen() {
               cachePolicy="memory-disk"
               priority="high"
             />
-            <ThemedText type="title">Connexion</ThemedText>
+            <ThemedText type="title">Bon retour</ThemedText>
           </View>
 
           <View style={[styles.formWrapper, { width }]}>

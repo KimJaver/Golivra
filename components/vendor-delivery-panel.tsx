@@ -252,7 +252,7 @@ function ExternalDeliveryCard({ d, palette, colors }: { d: VendorExternalDeliver
 
         <View style={[styles.modePill, { backgroundColor: colors.successSoft }]}>
 
-          <ThemedText style={[styles.modeTxt, { color: colors.success }]}>Externe</ThemedText>
+          <ThemedText style={[styles.modeTxt, { color: colors.success }]}>Votre livreur</ThemedText>
 
         </View>
 
@@ -336,7 +336,7 @@ function CommandeOrderCard({
 
         <View style={[styles.modePill, { backgroundColor: colors.primarySoft }]}>
 
-          <ThemedText style={[styles.modeTxt, { color: colors.primary }]}>Interne</ThemedText>
+          <ThemedText style={[styles.modeTxt, { color: colors.primary }]}>GoLivra</ThemedText>
 
         </View>
 
@@ -386,7 +386,7 @@ function CommandeOrderCard({
 
       ) : o.statut === 'prete' ? (
 
-        <ThemedText style={[styles.hint, { color: colors.textMuted }]}>Assignation automatique du livreur GoLivra…</ThemedText>
+        <ThemedText style={[styles.hint, { color: colors.textMuted }]}>Un livreur GoLivra sera contacté automatiquement.</ThemedText>
 
       ) : null}
 

@@ -64,10 +64,10 @@ export default function VendorTabsLayout() {
     <View style={[styles.root, { backgroundColor: colors.surface }]}>
       {pendingModeration ? (
         <View style={[styles.moderationBanner, { backgroundColor: colors.warningSoft, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-          <ThemedText style={[styles.moderationTitle, { color: colors.warning }]}>Validation en cours</ThemedText>
+          <ThemedText style={[styles.moderationTitle, { color: colors.warning }]}>Compte en attente</ThemedText>
           <ThemedText style={[styles.moderationText, { color: colors.textSecondary }]}>
-            Votre commerce n'est pas encore visible des clients. Un administrateur GoLivra doit valider votre
-            inscription avant l'ouverture au public.
+            Votre commerce n’est pas encore visible. L’équipe GoLivra vérifie votre inscription. Vous pouvez déjà
+            préparer votre menu ou vos produits.
           </ThemedText>
         </View>
       ) : null}

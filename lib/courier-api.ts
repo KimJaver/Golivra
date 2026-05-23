@@ -95,20 +95,4 @@ export async function completeCourierMission(token: string, deliveryId: string):
   });
 }
 
-export function missionStatutLabel(statut: string | null | undefined): string {
-  const key = (statut ?? '').trim().toLowerCase();
-  const map: Record<string, string> = {
-    en_attente: 'En attente',
-    attribuee: 'En mission',
-    assignee: 'En mission',
-    en_collecte: 'En mission',
-    collectee: 'En mission',
-    en_route: 'En mission',
-    en_cours: 'En mission',
-    livree: 'Terminée',
-    terminee: 'Terminée',
-    annulee: 'Annulée',
-    echec: 'Échec',
-  };
-  return map[key] ?? statut ?? '—';
-}
+export { courierMissionStatusLabel as missionStatutLabel } from '@/lib/ux-copy';

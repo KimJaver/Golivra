@@ -9,9 +9,9 @@ export const DB_TYPE_INTERNE: LivraisonDbType = 'commande';
 export const DB_TYPE_EXTERNE: LivraisonDbType = 'externe';
 
 export function typeLabel(dbType: string | null | undefined): string {
-  return dbType === 'externe' ? 'Livraison externe' : 'Livraison interne';
+  return dbType === 'externe' ? 'Livraison organisée par vous' : 'Livraison commande client';
 }
 
 export function payeurLabel(dbType: string | null | undefined): string {
-  return dbType === 'externe' ? 'Commerce' : 'Client';
+  return dbType === 'externe' ? 'Vous' : 'Le client';
 }

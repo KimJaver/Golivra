@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Fonts } from '@/constants/theme';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { UX_ONBOARDING } from '@/lib/ux-copy';
 
 const ONBOARDING_SEEN_KEY = 'golivra_onboarding_v2';
 const memoryStore = new Map<string, string>();
@@ -162,10 +163,10 @@ export default function LandingScreen() {
 
       <View style={styles.content}>
         <ThemedText type="title" style={[styles.title, { color: isDark ? colors.primaryBright : colors.primaryDeep }, compact ? styles.titleCompact : undefined]}>
-          Vos livraisons simples et rapides
+          {UX_ONBOARDING[slideIndex]?.title ?? UX_ONBOARDING[0].title}
         </ThemedText>
         <ThemedText style={[styles.subtitle, { color: colors.textSecondary }, compact ? styles.subtitleCompact : undefined]}>
-          Commandez. On s'occupe du reste.
+          {UX_ONBOARDING[slideIndex]?.subtitle ?? UX_ONBOARDING[0].subtitle}
         </ThemedText>
       </View>
 

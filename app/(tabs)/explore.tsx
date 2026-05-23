@@ -18,10 +18,14 @@ import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
 import { apiFetch } from '@/lib/api';
 import { getSessionToken } from '@/lib/auth';
 import { fetchAllEnterprises, peekAllEnterprises } from '@/lib/client-data';
+import { EventTimeline } from '@/components/event-timeline';
+import { formatDateTimeFr } from '@/lib/datetime';
 import { formatFcfa } from '@/lib/format';
+import type { TimelineStep } from '@/lib/datetime';
 import { fetchPendingReviews, type PendingReview } from '@/lib/reviews';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColors } from '@/hooks/use-app-colors';
+import { orderStatusLabel as statutLabel } from '@/lib/ux-copy';
 
 type OrderRow = {
   id: string;
@@ -31,6 +35,13 @@ type OrderRow = {
   adresse_livraison?: string | null;
   cree_le?: string | null;
   livree_le?: string | null;
+  created_at_label?: string | null;
+  livree_at_label?: string | null;
+  livraison_livree_at_label?: string | null;
+  timeline?: {
+    commande?: TimelineStep[];
+    livraisons?: { timeline?: TimelineStep[] }[];
+  };
   peut_noter?: boolean;
   sous_commande_id?: string | null;
 };
@@ -48,30 +59,6 @@ const TERMINAL_CANCEL = new Set(['annulee', 'remboursee']);
 
 function normStatut(s: string | null | undefined): string {
   return (s ?? '').trim().toLowerCase().replace(/\s+/g, '_');
-}
-
-function statutLabel(statut: string | null | undefined): string {
-  if (!statut) return '—';
-  const key = normStatut(statut);
-  const map: Record<string, string> = {
-    en_attente: 'En attente',
-    partiellement_acceptee: 'Partiellement acceptée',
-    acceptee: 'Acceptée',
-    en_preparation: 'En préparation',
-    prete: 'Prête',
-    en_livraison: 'En livraison',
-    livree: 'Livrée',
-    partiellement_livree: 'Partiellement livrée',
-    annulee: 'Annulée',
-    remboursee: 'Remboursée',
-    refusee: 'Refusée',
-    collectee: 'Collectée',
-    commande_creee: 'Commande créée',
-    en_attente_vendeur: 'En attente vendeur',
-    probleme: 'Problème',
-  };
-  const legacy = key.replace(/_/g, ' ');
-  return map[key] ?? map[legacy] ?? statut;
 }
 
 /** Référence type maquette #GLV-7845 */
@@ -105,13 +92,15 @@ function stepperFilledCount(statut: string | null): number {
 
 function formatLivreeLe(iso: string | null | undefined): string {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatDateTimeFr(iso);
+}
+
+function orderCreatedLabel(o: OrderRow): string {
+  return o.created_at_label || formatDateTimeFr(o.cree_le);
+}
+
+function orderDeliveredLabel(o: OrderRow): string {
+  return o.livraison_livree_at_label || o.livree_at_label || formatDateTimeFr(o.livree_le);
 }
 
 const PREVIEW_LIMIT = 4;
@@ -191,7 +180,9 @@ function OrdersScreenInner({
             </ThemedText>
             <ThemedText style={[styles.statusDark, { color: colors.text }]}>Livrée</ThemedText>
             <View style={styles.cardFooterRow}>
-              <ThemedText style={[styles.dateMuted, { color: colors.textMuted }]}>{dateStr ? `Livrée le ${dateStr}` : ' '}</ThemedText>
+              <ThemedText style={[styles.dateMuted, { color: colors.textMuted }]}>
+                {dateStr ? `Livrée le ${dateStr}` : orderCreatedLabel(o) ? `Commandée le ${orderCreatedLabel(o)}` : ' '}
+              </ThemedText>
               {priceOk ? (
                 <ThemedText type="defaultSemiBold" style={[styles.priceStrong, { color: colors.text }]}>
                   {formatFcfa(prixNum)}
@@ -224,13 +215,9 @@ function OrdersScreenInner({
             {merchant}
           </ThemedText>
           <ThemedText style={[styles.statusCancel, { color: colors.textMuted }]}>Annulée</ThemedText>
-          {o.cree_le ? (
+          {orderCreatedLabel(o) ? (
             <ThemedText style={[styles.dateMuted, { color: colors.textMuted }]}>
-              {new Date(o.cree_le).toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
+              Commandée le {orderCreatedLabel(o)}
             </ThemedText>
           ) : null}
         </View>
@@ -255,6 +242,11 @@ function OrdersScreenInner({
             {merchant}
           </ThemedText>
           <ThemedText style={[styles.statusDark, { color: colors.text }]}>En livraison</ThemedText>
+          {orderCreatedLabel(o) ? (
+            <ThemedText style={[styles.dateMuted, { color: colors.textMuted }]}>
+              Commandée le {orderCreatedLabel(o)}
+            </ThemedText>
+          ) : null}
           <View style={styles.deliveryRow}>
             <View style={[styles.deliveryIconWrap, { backgroundColor: colors.primary }]}>
               <Bike size={18} color={colors.onPrimary} strokeWidth={LUCIDE_STROKE} />
@@ -287,7 +279,17 @@ function OrdersScreenInner({
         <ThemedText style={prepOrange ? [styles.statusOrange, { color: colors.warning }] : [styles.statusDark, { color: colors.text }]}>
           {statutLabel(o.statut)}
         </ThemedText>
+        {orderCreatedLabel(o) ? (
+          <ThemedText style={[styles.dateMuted, { color: colors.textMuted, marginBottom: 8 }]}>
+            Commandée le {orderCreatedLabel(o)}
+          </ThemedText>
+        ) : null}
         <StepperRow filled={steps} colors={colors} />
+        {o.timeline?.livraisons?.[0]?.timeline?.length ? (
+          <View style={{ marginTop: 12 }}>
+            <EventTimeline steps={o.timeline.livraisons[0].timeline!} title="Suivi livraison" />
+          </View>
+        ) : null}
       </Pressable>
     );
   };
@@ -463,11 +465,12 @@ export default function OrdersScreen() {
             <ActivityIndicator size="large" color={colors.primary} />
             <ThemedText style={[styles.muted, { color: colors.textMuted }]}>Chargement…</ThemedText>
           </View>
-        ) : error ? (
-          <View style={[styles.card, styles.cardError, { borderColor: colors.errorSoft, backgroundColor: colors.surface }]}>
-            <ThemedText style={[styles.errText, { color: colors.error }]}>{error}</ThemedText>
+        ) : error && sortedOrders.length === 0 ? (
+          <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', gap: 12, padding: 20 }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <ThemedText style={[styles.muted, { color: colors.textMuted }]}>Chargement des commandes…</ThemedText>
             <Pressable style={[styles.retrySolid, { backgroundColor: colors.primary }]} onPress={() => void load()}>
-              <ThemedText style={[styles.retrySolidText, { color: colors.onPrimary }]}>Réessayer</ThemedText>
+              <ThemedText style={[styles.retrySolidText, { color: colors.onPrimary }]}>Actualiser</ThemedText>
             </Pressable>
           </View>
         ) : sortedOrders.length === 0 ? (

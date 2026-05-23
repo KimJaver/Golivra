@@ -61,8 +61,8 @@ export function vendorLabels(type: VendorCommerceType): VendorUiLabels {
   if (type === 'restaurant') {
     return {
       productsTab: 'Menu',
-      productsHeader: 'GESTION MENU',
-      profileHeader: 'MON RESTAURANT',
+      productsHeader: 'Votre menu',
+      profileHeader: 'Mon restaurant',
       dashboardRevenueLabel: "Chiffre du jour",
       dashboardStatCards: [
         { value: '12', label: 'Commandes' },
@@ -73,7 +73,7 @@ export function vendorLabels(type: VendorCommerceType): VendorUiLabels {
         title: 'Performance du jour',
         lines: [
           { value: '15', label: 'Livraisons' },
-          { value: '4,6', label: 'Note moy.' },
+          { value: '4,6', label: 'Note moyenne' },
         ],
       },
       orderListFilters: [
@@ -89,13 +89,13 @@ export function vendorLabels(type: VendorCommerceType): VendorUiLabels {
       addProductFab: 'Ajouter un plat',
       orderArticlesTitle: 'Plats',
       orderPrimaryCta: 'Commencer la préparation',
-      preparationHeader: 'SUIVI PRÉPARATION',
+      preparationHeader: 'Préparation',
     };
   }
   return {
     productsTab: 'Produits',
-    productsHeader: 'GESTION PRODUITS',
-    profileHeader: 'MA BOUTIQUE',
+    productsHeader: 'Vos produits',
+    profileHeader: 'Ma boutique',
     dashboardRevenueLabel: "Revenus aujourd'hui",
     dashboardStatCards: [
       { value: '28', label: 'Commandes' },
@@ -122,6 +122,6 @@ export function vendorLabels(type: VendorCommerceType): VendorUiLabels {
     addProductFab: 'Ajouter un produit',
     orderArticlesTitle: 'Produits',
     orderPrimaryCta: 'Préparer la commande',
-    preparationHeader: 'SUIVI EXPÉDITION',
+    preparationHeader: 'Préparation',
   };
 }

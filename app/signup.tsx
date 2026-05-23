@@ -26,6 +26,7 @@ import { requestOtp, verifyOtp } from '@/lib/otp';
 import { formatCgPhone, toCgE164 } from '@/lib/phone';
 import { uploadImageForSignup } from '@/lib/uploads';
 import { VENDOR_HREF } from '@/lib/vendor-nav';
+import { UX_ERRORS, friendlyErrorMessage } from '@/lib/ux-copy';
 
 type Profile = 'client' | 'vendeur';
 type CommerceKind = 'restaurant' | 'boutique';
@@ -118,9 +119,9 @@ function SignupScreenBase({ variant, forcedProfile }: BaseProps) {
     if (profile === 'client' && !fullName.trim()) return 'Indiquez votre nom complet.';
     if (!phoneE164) return 'Indiquez un numéro valide (+242 suivi de 9 chiffres).';
     if (!password || password.length < 6) return 'Le mot de passe doit contenir au moins 6 caractères.';
-    if (profile === 'vendeur' && !commerceKind) return 'Sélectionnez un type d\'établissement : restaurant ou boutique.';
+    if (profile === 'vendeur' && !commerceKind) return 'Choisissez restaurant ou boutique.';
     if (profile === 'vendeur') {
-      if (!businessName.trim()) return 'Indiquez le nom du business.';
+      if (!businessName.trim()) return 'Indiquez le nom de votre commerce.';
       if (!businessCategoryId) return 'Sélectionnez une catégorie.';
       if (!businessAddress.trim()) return 'Indiquez la localisation.';
     }
@@ -160,8 +161,8 @@ function SignupScreenBase({ variant, forcedProfile }: BaseProps) {
 
   const handleVerifyAndRegister = async () => {
     setError(null);
-    if (!otpSent) { setError('Demandez d\'abord le code de vérification.'); return; }
-    if (!otp.trim() || otp.trim().length < 4) { setError('Saisissez le code reçu par SMS.'); return; }
+    if (!otpSent) { setError('Demandez d’abord le code par SMS.'); return; }
+    if (!otp.trim() || otp.trim().length < 4) { setError(UX_ERRORS.otp); return; }
     const v = validateAccountForOtp();
     if (v) { setError(v); return; }
     setIsSubmitting(true);
@@ -195,11 +196,15 @@ function SignupScreenBase({ variant, forcedProfile }: BaseProps) {
       await new Promise<void>((r) => setTimeout(r, 0));
       const ent = enterprise as EnterpriseCreated;
       if (ent.statut_moderation === 'en_attente') {
-        Alert.alert('Inscription enregistrée', 'Votre commerce est en attente de validation par GoLivra. Vous pouvez préparer votre catalogue dans l\'app ; il ne sera pas visible des clients et ne recevra pas de commandes tant qu\'un administrateur ne l\'aura pas activé.', [{ text: 'Continuer', onPress: () => router.replace(VENDOR_HREF.root) }]);
+        Alert.alert(
+          'Compte créé',
+          'Votre commerce est en attente de validation. Vous pouvez préparer votre menu ou vos produits. Les clients le verront dès qu’il sera activé.',
+          [{ text: 'Continuer', onPress: () => router.replace(VENDOR_HREF.root) }],
+        );
         return;
       }
       router.replace(VENDOR_HREF.root);
-    } catch (e) { setError(e instanceof Error ? e.message : 'La création du compte a échoué.'); }
+    } catch (e) { setError(friendlyErrorMessage(e, 'La création du compte a échoué.')); }
     finally { setIsSubmitting(false); }
   };
 

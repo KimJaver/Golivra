@@ -180,6 +180,7 @@ export async function updateVendorOrderStatus(
   orderId: string,
   statut: VendorOrderStatus | string,
   sousCommandeId?: string,
+  raisonRefus?: string,
 ): Promise<unknown> {
   const apiStatut = VENDOR_TO_API_STATUT[statut] ?? statut;
   return apiFetch(`/api/orders/${orderId}/status`, {
@@ -188,6 +189,7 @@ export async function updateVendorOrderStatus(
     jsonBody: {
       statut: apiStatut,
       ...(sousCommandeId ? { sousCommandeId } : {}),
+      ...(raisonRefus ? { raisonRefus } : {}),
     },
   });
 }
@@ -265,16 +267,4 @@ export const createVendorDirectDelivery = createVendorExternalDelivery;
 /** @deprecated */
 export type VendorDirectDelivery = VendorExternalDelivery;
 
-export function livraisonStatutLabel(statut: string | null | undefined): string {
-  const m: Record<string, string> = {
-    en_attente: 'En attente — assignation livreur',
-    attribuee: 'Livreur GoLivra assigné',
-    en_collecte: 'Collecte en cours',
-    collectee: 'Colis récupéré',
-    en_route: 'En route vers le client',
-    livree: 'Livrée',
-    echec: 'Échec de livraison',
-    annulee: 'Annulée',
-  };
-  return m[statut || ''] ?? statut ?? '—';
-}
+export { deliveryTrackingLabel as livraisonStatutLabel } from '@/lib/ux-copy';

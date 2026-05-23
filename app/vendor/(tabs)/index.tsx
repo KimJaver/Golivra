@@ -16,20 +16,7 @@ import { formatFcfa } from '@/lib/format';
 import type { VendorPalette } from '@/lib/vendor-theme';
 import { VENDOR_HREF, hrefVendorOrder } from '@/lib/vendor-nav';
 import type { VendorOrderStatus } from '@/lib/vendor-types';
-
-function statusLabel(s: VendorOrderStatus): string {
-  const m: Record<VendorOrderStatus, string> = {
-    en_attente: 'Nouvelle',
-    acceptee: 'Acceptée',
-    a_preparer: 'À préparer',
-    en_preparation: 'En préparation',
-    prete: 'Prête',
-    en_livraison: 'En livraison',
-    livree: 'Livrée',
-    annulee: 'Annulée',
-  };
-  return m[s];
-}
+import { vendorOrderStatusLabel as statusLabel } from '@/lib/ux-copy';
 
 function statusStyle(s: VendorOrderStatus, colors: ReturnType<typeof useAppColors>) {
   switch (s) {

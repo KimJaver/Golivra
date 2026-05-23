@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppContentWidth } from '@/components/app-content-width';
 import { ThemeModePicker } from '@/components/theme-mode-picker';
+import { useActionFeedback } from '@/hooks/use-action-feedback';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { LUCIDE_STROKE } from '@/constants/icons';
@@ -30,6 +31,7 @@ export default function CourierSettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const palette = useCourierPalette();
+  const { showSuccess, showError, FeedbackOverlay } = useActionFeedback();
   const { profile, refresh } = useCourier();
 
   const [nom, setNom] = useState('');
@@ -50,14 +52,11 @@ export default function CourierSettingsScreen() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profileOk, setProfileOk] = useState<string | null>(null);
-  const [passwordOk, setPasswordOk] = useState<string | null>(null);
 
   const phoneE164 = toCgE164(phoneDisplay);
 
   const saveProfile = async () => {
     setError(null);
-    setProfileOk(null);
     if (!nom.trim()) {
       setError('Indiquez votre nom.');
       return;
@@ -76,9 +75,11 @@ export default function CourierSettingsScreen() {
         jsonBody: { nom: nom.trim(), telephone: phoneE164 },
       });
       await refresh();
-      setProfileOk('Informations enregistrées.');
+      showSuccess('Enregistré !', 'Vos informations personnelles ont été mises à jour.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Enregistrement impossible.');
+      const msg = e instanceof Error ? e.message : 'Enregistrement impossible.';
+      setError(msg);
+      showError('Enregistrement impossible', msg);
     } finally {
       setSavingProfile(false);
     }
@@ -86,7 +87,6 @@ export default function CourierSettingsScreen() {
 
   const savePassword = async () => {
     setError(null);
-    setPasswordOk(null);
     if (!currentPassword) {
       setError('Mot de passe actuel requis.');
       return;
@@ -111,9 +111,11 @@ export default function CourierSettingsScreen() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordOk('Mot de passe mis à jour.');
+      showSuccess('Mot de passe mis à jour', 'Utilisez-le lors de votre prochaine connexion.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Modification impossible.');
+      const msg = e instanceof Error ? e.message : 'Modification impossible.';
+      setError(msg);
+      showError('Modification impossible', msg);
     } finally {
       setSavingPassword(false);
     }
@@ -121,6 +123,7 @@ export default function CourierSettingsScreen() {
 
   return (
     <ThemedView style={styles.screen} lightColor={palette.bg} darkColor={palette.bg}>
+      <FeedbackOverlay />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 10), backgroundColor: palette.card, borderBottomColor: palette.border }]}>
           <Pressable style={[styles.back, { backgroundColor: palette.primarySoft }]} onPress={() => router.back()} hitSlop={12}>
@@ -133,22 +136,18 @@ export default function CourierSettingsScreen() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
+          <AppContentWidth phonePadding={0}>
+          <ThemeModePicker
+            palette={palette}
+            title="Mode clair / sombre"
+            hint="L’apparence s’applique à tout l’espace livreur."
+          />
+
           {error ? (
             <View style={[styles.err, { borderColor: palette.border }]}>
               <ThemedText style={[styles.errText, { color: palette.danger }]}>{error}</ThemedText>
             </View>
           ) : null}
-          {profileOk ? (
-            <View style={[styles.ok, { borderColor: palette.border }]}>
-              <ThemedText style={[styles.okText, { color: palette.successText }]}>{profileOk}</ThemedText>
-            </View>
-          ) : null}
-          {passwordOk ? (
-            <View style={[styles.ok, { borderColor: palette.border }]}>
-              <ThemedText style={[styles.okText, { color: palette.successText }]}>{passwordOk}</ThemedText>
-            </View>
-          ) : null}
-
           <ThemedText style={[styles.section, { color: palette.primaryDeep }]}>Informations</ThemedText>
           <View style={[styles.group, { backgroundColor: palette.card, borderColor: palette.border }]}>
             <Field icon={<User size={18} color={palette.primary} />} label="Nom" value={nom} onChangeText={setNom} palette={palette} />
@@ -169,7 +168,7 @@ export default function CourierSettingsScreen() {
             )}
           </Pressable>
 
-          <ThemedText style={[styles.section, { marginTop: 20, color: palette.primaryDeep }]}>Mot de passe</ThemedText>
+          <ThemedText style={[styles.section, { marginTop: 16, color: palette.primaryDeep }]}>Mot de passe</ThemedText>
           <View style={[styles.group, { backgroundColor: palette.card, borderColor: palette.border }]}>
             <PwdField label="Actuel" value={currentPassword} onChange={setCurrentPassword} show={showCurrent} toggle={() => setShowCurrent((v) => !v)} palette={palette} />
             <PwdField label="Nouveau" value={newPassword} onChange={setNewPassword} show={showNew} toggle={() => setShowNew((v) => !v)} palette={palette} />

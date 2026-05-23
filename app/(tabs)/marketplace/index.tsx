@@ -48,6 +48,8 @@ import {
   fetchPublicPricing,
   type PublicPricing,
 } from '@/lib/pricing';
+import { accentForEnterpriseCategory, iconForEnterpriseCategory } from '@/lib/marketplace-categories';
+import { friendlyErrorMessage } from '@/lib/ux-copy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Segment = 'restaurant' | 'boutique';
@@ -127,7 +129,7 @@ export default function MarketplaceListScreen() {
         setCategories(cats);
         setItems(ents);
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Impossible de charger le marketplace.');
+        setError(friendlyErrorMessage(e, 'Impossible de charger les commerces.'));
         if (!cached?.length) setItems([]);
       } finally {
         setLoading(false);
@@ -300,15 +302,22 @@ export default function MarketplaceListScreen() {
                 contentContainerStyle={styles.catScroll}>
                 {categories.map((c) => {
                   const on = categoryId === c.id;
+                  const CatIcon = iconForEnterpriseCategory(c.nom, segment);
+                  const accent = accentForEnterpriseCategory(c.nom, segment);
                   return (
                     <Pressable
                       key={c.id}
-                      style={styles.catItem}
+                      style={[styles.catItem, on && styles.catItemOn]}
                       onPress={() => setCategoryId((prev) => (prev === c.id ? null : c.id))}>
-                      <View style={[styles.catCircle, on && styles.catCircleOn]}>
-                        <ThemedText style={styles.catInitial}>{categoryInitial(c.nom)}</ThemedText>
+                      <View
+                        style={[
+                          styles.catIconWrap,
+                          { backgroundColor: `${accent}18` },
+                          on && { borderWidth: 2, borderColor: colors.primary },
+                        ]}>
+                        <CatIcon size={22} color={on ? colors.primary : accent} strokeWidth={LUCIDE_STROKE} />
                       </View>
-                      <ThemedText style={[styles.catLabel, on && styles.catLabelOn]} numberOfLines={2}>
+                      <ThemedText style={[styles.catCaption, on && styles.catLabelOn]} numberOfLines={2}>
                         {c.nom}
                       </ThemedText>
                     </Pressable>

@@ -137,7 +137,7 @@ export default function CourierMissionDetailScreen() {
           <View style={[styles.hero, { backgroundColor: palette.card, borderColor: palette.border }]}>
             <ThemedText style={[styles.ref, { color: palette.text }]}>
               {mission.type_livraison === 'externe'
-                ? 'Livraison externe'
+                ? 'Livraison du commerce'
                 : mission.commande?.numero || mission.id.slice(0, 8).toUpperCase()}
             </ThemedText>
             <View style={[styles.statutPill, { backgroundColor: palette.primarySoft }]}>

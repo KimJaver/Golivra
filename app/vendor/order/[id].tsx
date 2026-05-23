@@ -27,20 +27,7 @@ import {
 } from '@/lib/vendor-api';
 import type { VendorOrder, VendorOrderStatus } from '@/lib/vendor-types';
 import { hrefVendorPreparation } from '@/lib/vendor-nav';
-
-function statusLabel(s: VendorOrderStatus): string {
-  const m: Record<VendorOrderStatus, string> = {
-    en_attente: 'Nouvelle commande',
-    acceptee: 'Commande acceptée',
-    a_preparer: 'À préparer',
-    en_preparation: 'En préparation',
-    prete: 'Prête — GoLivra',
-    en_livraison: 'En livraison GoLivra',
-    livree: 'Livrée',
-    annulee: 'Annulée',
-  };
-  return m[s] ?? s;
-}
+import { vendorOrderStatusLabel as statusLabel } from '@/lib/ux-copy';
 
 export default function VendorOrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

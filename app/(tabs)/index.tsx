@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
 import {
   Bell,
@@ -25,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeHeroCarousel, type HomeHeroSlide } from '@/components/home-hero-carousel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { rgbaBrand } from '@/constants/app-palette';
 import { LUCIDE_STROKE } from '@/constants/icons';
 import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
 import { apiFetch } from '@/lib/api';
@@ -40,9 +42,11 @@ import {
   fetchPublicPricing,
   type PublicPricing,
 } from '@/lib/pricing';
+import { formatDateTimeFr } from '@/lib/datetime';
 import { formatFcfa } from '@/lib/format';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { useUnreadNotifications } from '@/hooks/use-unread-notifications';
+import { orderStatusLabel as statutLabel } from '@/lib/ux-copy';
 
 type Enterprise = {
   id: string;
@@ -79,27 +83,6 @@ function normStatutHome(s: string | null | undefined): string {
 function isActiveOrder(statut: string | null | undefined): boolean {
   if (!statut?.trim()) return false;
   return !TERMINAL_STATUSES.has(normStatutHome(statut));
-}
-
-function statutLabel(statut: string | null | undefined): string {
-  if (!statut) return 'Statut inconnu';
-  const key = normStatutHome(statut);
-  const map: Record<string, string> = {
-    en_attente: 'En attente',
-    partiellement_acceptee: 'Partiellement acceptée',
-    acceptee: 'Acceptée',
-    en_preparation: 'En préparation',
-    prete: 'Prête',
-    en_livraison: 'En livraison',
-    livree: 'Livrée',
-    partiellement_livree: 'Partiellement livrée',
-    annulee: 'Annulée',
-    remboursee: 'Remboursée',
-    commande_creee: 'Commande créée',
-    en_attente_vendeur: 'En attente vendeur',
-    probleme: 'Problème',
-  };
-  return map[key] ?? statut;
 }
 
 const CATEGORY_ITEMS: { key: string; label: string; Icon: LucideIcon; type: 'restaurant' | 'boutique' | 'all' }[] = [
@@ -248,8 +231,11 @@ export default function HomeScreen() {
         <View style={styles.topBar}>
           <View style={styles.topBarLeft}>
             <Image source={require('@/assets/images/logo.png')} style={styles.brandLogo} contentFit="contain" />
-            <ThemedText style={[styles.greeting, { color: colors.textMuted }]} numberOfLines={1}>
+            <ThemedText style={[styles.greeting, { color: colors.text }]} numberOfLines={1}>
               Bonjour, {firstName}
+            </ThemedText>
+            <ThemedText style={[styles.greetingSub, { color: colors.textMuted }]} numberOfLines={1}>
+              Que souhaitez-vous commander aujourd’hui ?
             </ThemedText>
           </View>
           <View style={styles.topBarRight}>
@@ -296,7 +282,7 @@ export default function HomeScreen() {
           <Search size={22} color={colors.textMuted} strokeWidth={LUCIDE_STROKE} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Rechercher un restaurant, un plat, une boutique…"
+            placeholder="Restaurants, boutiques…"
             placeholderTextColor={colors.placeholder}
             value={search}
             onChangeText={setSearch}
@@ -321,26 +307,43 @@ export default function HomeScreen() {
           onCta={() => goMarketplace()}
         />
 
-        <View style={styles.catGrid}>
+        <View style={styles.sectionHead}>
+          <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.primaryDeep }]}>
+            Explorer
+          </ThemedText>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.catRow}>
           {CATEGORY_ITEMS.map((c) => (
             <Pressable
               key={c.key}
-              style={[styles.catTile, { borderColor: colors.border, backgroundColor: colors.surface }]}
-              onPress={() => goMarketplace({ type: c.type })}
+              style={[
+                styles.catCard,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                  shadowColor: colors.primaryDeep,
+                },
+              ]}
+              onPress={() => goMarketplace(c.type === 'all' ? undefined : { type: c.type })}
               android_ripple={{ color: colors.primaryMuted }}>
-              <View style={[styles.catIconWrap, { backgroundColor: colors.primarySoft }]}>
-                <c.Icon size={24} color={colors.primary} strokeWidth={LUCIDE_STROKE} />
-              </View>
+              <LinearGradient
+                colors={[rgbaBrand(0.14), colors.primarySoft]}
+                style={styles.catIconWrap}>
+                <c.Icon size={26} color={colors.primary} strokeWidth={LUCIDE_STROKE} />
+              </LinearGradient>
               <ThemedText style={[styles.catLabel, { color: colors.text }]} numberOfLines={2}>
                 {c.label}
               </ThemedText>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
 
         <View style={styles.sectionHead}>
           <ThemedText type="subtitle" style={[styles.sectionTitle, { color: colors.primaryDeep }]}>
-            Commerces disponibles
+            Restaurants et boutiques
           </ThemedText>
           <Pressable onPress={() => goMarketplace()} hitSlop={10}>
             <ThemedText style={[styles.seeAll, { color: colors.primary }]}>Voir tout {'>'}</ThemedText>
@@ -351,18 +354,18 @@ export default function HomeScreen() {
             <ActivityIndicator color={colors.primary} />
             <ThemedText style={[styles.loaderText, { color: colors.textMuted }]}>Chargement des commerces…</ThemedText>
           </View>
-        ) : enterpriseError ? (
+        ) : enterpriseError && enterprises.length === 0 ? (
           <View style={[styles.warnCard, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}>
-            <ThemedText style={[styles.warnTitle, { color: colors.primaryDeep }]}>Liste indisponible</ThemedText>
-            <ThemedText style={[styles.warnBody, { color: colors.textMuted }]}>{enterpriseError}</ThemedText>
-            <Pressable style={[styles.warnBtn, { backgroundColor: colors.primary }]} onPress={() => void loadAll()}>
-              <ThemedText style={[styles.warnBtnText, { color: colors.onPrimary }]}>Réessayer</ThemedText>
+            <ActivityIndicator color={colors.primary} />
+            <ThemedText style={[styles.warnBody, { color: colors.textMuted }]}>Connexion en cours…</ThemedText>
+            <Pressable style={[styles.warnBtn, { backgroundColor: colors.primary }]} onPress={() => void loadAll(true)}>
+              <ThemedText style={[styles.warnBtnText, { color: colors.onPrimary }]}>Actualiser</ThemedText>
             </Pressable>
           </View>
         ) : enterprises.length === 0 ? (
           <View style={[styles.warnCard, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}>
-            <ThemedText style={[styles.warnTitle, { color: colors.primaryDeep }]}>Aucun commerce</ThemedText>
-            <ThemedText style={[styles.warnBody, { color: colors.textMuted }]}>Aucun établissement ouvert pour le moment.</ThemedText>
+            <ThemedText style={[styles.warnTitle, { color: colors.primaryDeep }]}>Rien pour le moment</ThemedText>
+            <ThemedText style={[styles.warnBody, { color: colors.textMuted }]}>Aucun restaurant ni boutique ouvert près de vous.</ThemedText>
           </View>
         ) : (
           <View style={styles.commerceList}>
@@ -466,6 +469,11 @@ export default function HomeScreen() {
               <View style={[styles.statusBadge, { backgroundColor: colors.successSoft }]}>
                 <ThemedText style={[styles.statusBadgeText, { color: colors.success }]}>{statutLabel(heroOrder.statut)}</ThemedText>
               </View>
+              {heroOrder.cree_le ? (
+                <ThemedText style={[styles.orderMerchant, { color: colors.textMuted }]}>
+                  Commandée le {formatDateTimeFr(heroOrder.cree_le)}
+                </ThemedText>
+              ) : null}
             </View>
             <ChevronRight size={22} color={colors.textMuted} strokeWidth={LUCIDE_STROKE} />
           </Pressable>
@@ -488,7 +496,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   topBarLeft: { flex: 1, gap: 2, marginRight: 8 },
-  greeting: { fontSize: 14, fontWeight: '600' },
+  greeting: { fontSize: 17, fontWeight: '800' },
+  greetingSub: { fontSize: 13, fontWeight: '500', marginTop: 2 },
   brandLogo: { width: 120, height: 40 },
   infoChips: {
     flexDirection: 'row',
@@ -548,26 +557,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 16,
   },
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
-  },
-  catTile: {
-    width: '48%',
-    flexGrow: 1,
-    flexBasis: '46%',
-    minHeight: 88,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-    gap: 10,
-  },
   catIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -613,25 +606,29 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingBottom: 6,
     marginBottom: 20,
+    paddingRight: 4,
   },
   catCard: {
-    width: 76,
-    minHeight: 88,
-    borderRadius: 18,
+    width: 108,
+    minHeight: 112,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    gap: 10,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   catLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 17,
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 14,
+    textAlign: 'center',
+    opacity: 0.9,
   },
   sectionHead: {
     flexDirection: 'row',

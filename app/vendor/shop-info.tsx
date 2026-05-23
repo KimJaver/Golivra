@@ -170,8 +170,8 @@ export default function VendorShopInfoScreen() {
             Réseau GoLivra
           </ThemedText>
           <ThemedText style={[styles.deliverySub, { color: colors.textMuted }]}>
-            Livraison interne : quand un client commande, la livraison est créée à « prête » et un livreur est assigné
-            (client paie produit + livraison). Livraison externe : vous la créez vous-même et payez la livraison.
+            Quand un client commande, un livreur GoLivra est contacté (le client paie la livraison). Vous pouvez aussi
+            créer une livraison vous-même depuis l’app (vous payez les frais).
           </ThemedText>
         </View>
 

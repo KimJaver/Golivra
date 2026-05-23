@@ -4,6 +4,7 @@ import {
   ActionFeedbackOverlay,
   type ActionFeedbackVariant,
 } from '@/components/action-feedback-overlay';
+import { UX_ERRORS, friendlyErrorMessage } from '@/lib/ux-copy';
 
 type FeedbackConfig = {
   variant: ActionFeedbackVariant;
@@ -55,7 +56,7 @@ export function useActionFeedback() {
 
   const showError = useCallback(
     (title: string, message?: string) => {
-      open({ variant: 'error', title, message: message ?? 'Réessayez dans un instant.' });
+      open({ variant: 'error', title, message: friendlyErrorMessage(message, UX_ERRORS.generic) });
     },
     [open],
   );
