@@ -94,11 +94,11 @@ const CATEGORY_ITEMS: { key: string; label: string; Icon: LucideIcon; type: 'res
 
 const HERO_SLIDES: HomeHeroSlide[] = [
   {
-    image: require('@/assets/images/assetlivraions.png'),
+    image: require('@/assets/images/Image3.png'),
     cta: 'Commander maintenant',
   },
   {
-    image: require('@/assets/images/marketplaceassets.png'),
+    image: require('@/assets/images/Image2.png'),
     cta: 'Voir le marketplace',
   },
 ];
