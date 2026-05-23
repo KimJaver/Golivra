@@ -28,11 +28,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...base,
     name: 'GoLivra',
     slug: base.slug ?? 'golivra',
+    plugins: [...(base.plugins ?? []), '@sentry/react-native'],
     android: {
       ...base.android,
       package: base.android?.package ?? 'kimjaver.golivra',
-      usesCleartextTraffic: allowCleartext,
-    },
+      ...(allowCleartext ? { usesCleartextTraffic: true } : {}),
+    } as ExpoConfig['android'],
     ios: {
       ...base.ios,
       supportsTablet: true,

@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import 'react-native-reanimated';
 
 import { AppThemeProvider, useAppTheme } from '@/contexts/app-theme-context';
+import { stackAuthOptions, stackScreenOptions } from '@/lib/app-navigation';
 
 // Initialisation de Sentry pour le suivi des erreurs
 Sentry.init({
@@ -39,30 +40,26 @@ function RootNavigation() {
 
   return (
     <NavThemeProvider value={navTheme}>
-      <Stack
-        screenOptions={{
-          contentStyle: { backgroundColor: colors.background },
-          animation: 'slide_from_right',
-        }}>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="auth" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
-        <Stack.Screen name="signup" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="signup/choose" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="signup/client" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="signup/restaurant" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="signup/boutique" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="vendor" options={{ headerShown: false }} />
-        <Stack.Screen name="courier" options={{ headerShown: false }} />
-        <Stack.Screen name="notifications" options={{ headerShown: false }} />
-        <Stack.Screen name="account-settings" options={{ headerShown: false }} />
-        <Stack.Screen name="my-addresses" options={{ headerShown: false }} />
-        <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ headerShown: false }} />
-        <Stack.Screen name="how-multi-delivery" options={{ headerShown: false }} />
-        <Stack.Screen name="order-deliveries-summary" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      <Stack screenOptions={stackScreenOptions(colors)}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="auth" options={stackAuthOptions()} />
+        <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="signup" options={stackAuthOptions()} />
+        <Stack.Screen name="signup/choose" options={stackAuthOptions()} />
+        <Stack.Screen name="signup/client" options={stackAuthOptions()} />
+        <Stack.Screen name="signup/restaurant" options={stackAuthOptions()} />
+        <Stack.Screen name="signup/boutique" options={stackAuthOptions()} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade', animationDuration: 200 }} />
+        <Stack.Screen name="vendor" options={{ animation: 'fade', animationDuration: 200 }} />
+        <Stack.Screen name="courier" options={{ animation: 'fade', animationDuration: 200 }} />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="account-settings" />
+        <Stack.Screen name="my-addresses" />
+        <Stack.Screen name="payment-methods" />
+        <Stack.Screen name="settings" />
+        <Stack.Screen name="how-multi-delivery" />
+        <Stack.Screen name="order-deliveries-summary" />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
       <StatusBar style={colors.statusBar} />
     </NavThemeProvider>

@@ -11,7 +11,6 @@ import {
   Heart,
   HelpCircle,
   MapPin,
-  LogOut,
   Settings,
   SlidersHorizontal,
   Smartphone,
@@ -25,8 +24,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { LUCIDE_STROKE } from '@/constants/icons';
-import { getSessionToken, logoutLocal } from '@/lib/auth';
-import { saveCart } from '@/lib/cart-local';
+import { AppLogoutButton } from '@/components/app-logout-button';
+import { getSessionToken } from '@/lib/auth';
 import { fetchAuthMe, peekAuthMe, type AuthMe } from '@/lib/client-data';
 import { resolveRemoteImageUrl } from '@/lib/images';
 import { isMerchantRole } from '@/lib/roles';
@@ -212,12 +211,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <Pressable
-          onPress={() => void handleLogout()}
-          style={({ pressed }) => [styles.logoutButton, { backgroundColor: colors.primary }, pressed && styles.logoutPressed]}>
-          <LogOut size={18} color={colors.surface} strokeWidth={LUCIDE_STROKE} />
-          <ThemedText style={[styles.logoutText, { color: colors.onPrimary }]}>Se déconnecter</ThemedText>
-        </Pressable>
+        <AppLogoutButton />
 
         <ThemedText style={[styles.versionLine, { color: colors.textMuted }]}>GoLivra · version {appVersion}</ThemedText>
       </ScrollView>
@@ -361,22 +355,6 @@ const styles = StyleSheet.create({
   menuTitle: { fontSize: 15 },
   menuSub: { fontSize: 11, marginTop: 2 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 14,
-    paddingVertical: 13,
-    marginTop: 6,
-    shadowColor: '#0C3020',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  logoutPressed: { opacity: 0.92 },
-  logoutText: { fontWeight: '800', fontSize: 15 },
   versionLine: {
     textAlign: 'center',
     fontSize: 11,

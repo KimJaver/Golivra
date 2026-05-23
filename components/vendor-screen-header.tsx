@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -33,7 +34,10 @@ export function VendorScreenHeader({ title, subtitle, right, onBack }: Props) {
       ]}>
       <Pressable
         style={[styles.backBtn, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}
-        onPress={onBack ?? (() => router.back())}
+        onPress={() => {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          (onBack ?? (() => router.back()))();
+        }}
         hitSlop={10}
         accessibilityRole="button"
         accessibilityLabel="Retour">

@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { CourierProvider } from '@/contexts/courier-context';
 import { useAppTheme } from '@/contexts/app-theme-context';
+import { stackScreenOptions, stackTabRootOptions } from '@/lib/app-navigation';
 
 export default function CourierRootLayout() {
   const { colors } = useAppTheme();
@@ -12,11 +13,10 @@ export default function CourierRootLayout() {
       <StatusBar style={colors.statusBar} />
       <Stack
         screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
+          ...stackScreenOptions(colors),
           contentStyle: { backgroundColor: colors.backgroundAlt },
         }}>
-        <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
+        <Stack.Screen name="(tabs)" options={stackTabRootOptions()} />
         <Stack.Screen name="settings" />
         <Stack.Screen name="notifications" />
         <Stack.Screen name="mission/[id]" />

@@ -6,7 +6,6 @@ import {
   ChevronRight,
   CreditCard,
   HelpCircle,
-  LogOut,
   MapPin,
   Package,
   Settings,
@@ -28,8 +27,6 @@ import { useAppColors } from '@/hooks/use-app-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useVendorTheme } from '@/hooks/use-vendor-theme';
 import { VENDOR_HREF } from '@/lib/vendor-nav';
-import { logoutLocal } from '@/lib/auth';
-import { saveCart } from '@/lib/cart-local';
 import { useVendor } from '@/contexts/vendor-context';
 
 export default function VendorMoreTabScreen() {
@@ -73,12 +70,6 @@ export default function VendorMoreTabScreen() {
       <ChevronRight size={18} color={colors.textMuted} strokeWidth={LUCIDE_STROKE} />
     </Pressable>
   );
-
-  const logout = async () => {
-    await logoutLocal();
-    await saveCart(null);
-    router.replace('/auth');
-  };
 
   return (
     <ThemedView style={styles.screen}>
@@ -201,10 +192,7 @@ export default function VendorMoreTabScreen() {
           )}
         </View>
 
-        <Pressable style={styles.logout} onPress={() => void logout()}>
-          <LogOut size={18} color={colors.error} strokeWidth={LUCIDE_STROKE} />
-          <ThemedText style={[styles.logoutText, { color: colors.error }]}>Se déconnecter</ThemedText>
-        </Pressable>
+        <AppLogoutButton clearCart={false} />
       </ScrollView>
     </ThemedView>
   );
@@ -274,13 +262,4 @@ const styles = StyleSheet.create({
   menuTitleDanger: { fontWeight: '600' },
   menuSub: { fontSize: 12, lineHeight: 17 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
-  logout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginTop: 4,
-  },
-  logoutText: { fontSize: 15, fontWeight: '800' },
 });

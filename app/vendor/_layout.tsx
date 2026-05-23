@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useAppTheme } from '@/contexts/app-theme-context';
 import { VendorProvider } from '@/contexts/vendor-context';
+import { stackModalOptions, stackScreenOptions, stackTabRootOptions } from '@/lib/app-navigation';
 
 export default function VendorRootLayout() {
   const { colors } = useAppTheme();
@@ -12,14 +13,13 @@ export default function VendorRootLayout() {
       <StatusBar style={colors.statusBar} />
       <Stack
         screenOptions={{
-          headerShown: false,
-          animation: 'slide_from_right',
+          ...stackScreenOptions(colors),
           contentStyle: { backgroundColor: colors.backgroundAlt },
         }}>
-        <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
+        <Stack.Screen name="(tabs)" options={stackTabRootOptions()} />
         <Stack.Screen name="order/[id]" />
         <Stack.Screen name="preparation/[id]" />
-        <Stack.Screen name="add-product" />
+        <Stack.Screen name="add-product" options={stackModalOptions(colors)} />
         <Stack.Screen name="stock/[id]" />
         <Stack.Screen name="statistics" />
         <Stack.Screen name="delivery" />

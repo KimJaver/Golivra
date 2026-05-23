@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { ChevronRight, Lock, LogOut, Settings, User } from 'lucide-react-native';
+import { ChevronRight, Lock, Settings, User } from 'lucide-react-native';
 
 import { AppContentWidth } from '@/components/app-content-width';
+import { AppLogoutButton } from '@/components/app-logout-button';
 import { ThemeModePicker } from '@/components/theme-mode-picker';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +14,6 @@ import { ThemedView } from '@/components/themed-view';
 import { COURIER_TAB_BAR_PADDING_BOTTOM } from '@/constants/courier-layout';
 import { LUCIDE_STROKE } from '@/constants/icons';
 import { useCourier } from '@/contexts/courier-context';
-import { logoutLocal } from '@/lib/auth';
 import { useCourierPalette } from '@/lib/courier-theme';
 import { resolveRemoteImageUrl } from '@/lib/images';
 
@@ -37,11 +37,6 @@ export default function CourierProfileScreen() {
     } finally {
       setActing(false);
     }
-  };
-
-  const logout = async () => {
-    await logoutLocal();
-    router.replace('/auth');
   };
 
   return (
@@ -105,10 +100,7 @@ export default function CourierProfileScreen() {
           />
         </View>
 
-        <Pressable style={[styles.logoutBtn, { backgroundColor: palette.dangerBg, borderColor: palette.border }]} onPress={() => void logout()}>
-          <LogOut size={18} color={palette.danger} strokeWidth={LUCIDE_STROKE} />
-          <ThemedText style={[styles.logoutText, { color: palette.danger }]}>Se déconnecter</ThemedText>
-        </Pressable>
+        <AppLogoutButton clearCart={false} />
         </AppContentWidth>
       </ScrollView>
     </ThemedView>
