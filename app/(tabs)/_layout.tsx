@@ -1,6 +1,7 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Tabs, useRouter } from 'expo-router';
 import { ClipboardList, Heart, Home, ShoppingBag, Store, UserRound } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { GolivraTabBar } from '@/components/golivra-tab-bar';
@@ -20,31 +21,30 @@ export default function TabLayout() {
   const router = useRouter();
   const [sessionChecked, setSessionChecked] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const token = await getSessionToken();
-      if (!alive) return;
-      if (!token) {
-        router.replace('/auth');
-        return;
+  const verifySession = useCallback(async () => {
+    const token = await getSessionToken();
+    if (!token) {
+      setSessionChecked(false);
+      router.replace('/auth');
+      return;
+    }
+    setSessionChecked(true);
+    prefetchClientCatalog();
+    try {
+      const me = await fetchAuthMe(token);
+      if (isMerchantRole(me.role)) {
+        router.replace(VENDOR_HREF.root);
       }
-      setSessionChecked(true);
-      prefetchClientCatalog();
-      try {
-        const me = await fetchAuthMe(token);
-        if (!alive) return;
-        if (isMerchantRole(me.role)) {
-          router.replace(VENDOR_HREF.root);
-        }
-      } catch {
-        /* si /me échoue, on laisse l’accès client */
-      }
-    })();
-    return () => {
-      alive = false;
-    };
+    } catch {
+      /* si /me échoue, on laisse l’accès client */
+    }
   }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void verifySession();
+    }, [verifySession]),
+  );
 
   if (!sessionChecked) {
     return (

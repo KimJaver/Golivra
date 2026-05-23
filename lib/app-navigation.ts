@@ -40,12 +40,17 @@ export function stackModalOptions(colors: AppPalette): NativeStackNavigationOpti
   };
 }
 
-/** Réinitialise la pile puis ouvre la connexion (après déconnexion). */
+/** Retour écran connexion après déconnexion (tous rôles). */
 export function navigateToAuthAfterLogout(): void {
-  try {
-    router.dismissAll();
-  } catch {
-    /* ignore */
-  }
   router.replace('/auth');
+
+  // Sur le web, la pile imbriquée (vendor/courier) peut ignorer replace : repli doux.
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    setTimeout(() => {
+      const path = window.location.pathname.replace(/\/$/, '');
+      if (!path.endsWith('/auth') && !path.includes('/auth')) {
+        window.location.replace('/auth');
+      }
+    }, 150);
+  }
 }

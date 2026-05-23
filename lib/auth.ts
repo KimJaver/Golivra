@@ -93,11 +93,9 @@ export async function logoutLocal(): Promise<void> {
     /* ignore */
   }
   if (token) {
-    try {
-      await logoutRemote(token);
-    } catch {
-      /* on efface quand même localement */
-    }
+    void logoutRemote(token).catch(() => {
+      /* réseau lent ou hors ligne : on déconnecte quand même localement */
+    });
   }
   await clearSessionToken();
 }

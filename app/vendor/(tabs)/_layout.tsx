@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { Tabs, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { ClipboardList, Home, LayoutGrid, Package, Truck, UtensilsCrossed } from 'lucide-react-native';
 
@@ -26,31 +27,32 @@ export default function VendorTabsLayout() {
   const commerceType = shop?.type === 'restaurant' ? 'restaurant' : 'boutique';
   const palette = vendorPalette(commerceType);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const token = await getSessionToken();
-      if (!token) {
-        router.replace('/auth');
+  const verifySession = useCallback(async () => {
+    const token = await getSessionToken();
+    if (!token) {
+      setOk(false);
+      router.replace('/auth');
+      return;
+    }
+    try {
+      const me = await apiFetch<Me>('/api/auth/me', { method: 'GET', token });
+      if (!isMerchantRole(me.role)) {
+        setOk(false);
+        router.replace(homeHrefForRole(me.role));
         return;
       }
-      try {
-        const me = await apiFetch<Me>('/api/auth/me', { method: 'GET', token });
-        if (!alive) return;
-        if (!isMerchantRole(me.role)) {
-          router.replace(homeHrefForRole(me.role));
-          return;
-        }
-        setOk(true);
-      } catch {
-        if (!alive) return;
-        router.replace('/auth');
-      }
-    })();
-    return () => {
-      alive = false;
-    };
+      setOk(true);
+    } catch {
+      setOk(false);
+      router.replace('/auth');
+    }
   }, [router]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void verifySession();
+    }, [verifySession]),
+  );
 
   if (!ok || vendorLoading) {
     return (

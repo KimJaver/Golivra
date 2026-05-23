@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
-import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Platform } from 'react-native';
 
 import { logoutLocal } from '@/lib/auth';
 import { saveCart } from '@/lib/cart-local';
@@ -11,38 +11,70 @@ type Options = {
   clearCart?: boolean;
 };
 
+function hapticLight(): void {
+  if (Platform.OS === 'web') return;
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}
+
+function hapticSuccess(): void {
+  if (Platform.OS === 'web') return;
+  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+}
+
+function confirmLogoutDialog(onConfirm: () => void): void {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm('Voulez-vous vraiment vous déconnecter ?')) {
+      onConfirm();
+    }
+    return;
+  }
+
+  Alert.alert(
+    'Déconnexion',
+    'Voulez-vous vraiment vous déconnecter ?',
+    [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Se déconnecter', style: 'destructive', onPress: onConfirm },
+    ],
+    { cancelable: true },
+  );
+}
+
 export function useLogout(options: Options = { clearCart: true }) {
   const [loggingOut, setLoggingOut] = useState(false);
+  const busyRef = useRef(false);
 
   const performLogout = useCallback(async () => {
-    if (loggingOut) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setLoggingOut(true);
     try {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      hapticSuccess();
       await logoutLocal();
       if (options.clearCart !== false) {
         await saveCart(null);
       }
       navigateToAuthAfterLogout();
     } catch {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Déconnexion', 'Impossible de se déconnecter. Réessayez.');
+      hapticLight();
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined') {
+          window.alert('Impossible de se déconnecter. Réessayez.');
+        }
+      } else {
+        Alert.alert('Déconnexion', 'Impossible de se déconnecter. Réessayez.');
+      }
     } finally {
+      busyRef.current = false;
       setLoggingOut(false);
     }
-  }, [loggingOut, options.clearCart]);
+  }, [options.clearCart]);
 
   const confirmLogout = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert(
-      'Déconnexion',
-      'Voulez-vous vraiment vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Se déconnecter', style: 'destructive', onPress: () => void performLogout() },
-      ],
-      { cancelable: true },
-    );
+    hapticLight();
+    confirmLogoutDialog(() => {
+      void performLogout();
+    });
   }, [performLogout]);
 
   return { confirmLogout, performLogout, loggingOut };
