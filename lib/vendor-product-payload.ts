@@ -61,7 +61,16 @@ export function buildProductApiBody(
   const l = numOrNull(values.longueurCm);
   const w = numOrNull(values.largeurCm);
   const h = numOrNull(values.hauteurCm);
-  const dimensions = l || w || h ? { l: l ?? undefined, w: w ?? undefined, h: h ?? undefined } : null;
+  const dimensions =
+    l || w || h
+      ? {
+          ...(l ? { l } : {}),
+          ...(w ? { w } : {}),
+          ...(h ? { h } : {}),
+        }
+      : undefined;
+
+  const poids = values.poidsKg.trim() ? Number(values.poidsKg) : null;
 
   return {
     nom: values.nom.trim(),
@@ -84,7 +93,7 @@ export function buildProductApiBody(
     typeProduit: values.typeProduit,
     etatProduit: values.etatProduit,
     marque: values.marque.trim() || undefined,
-    poidsKg: values.poidsKg.trim() ? Number(values.poidsKg) : null,
-    dimensions,
+    ...(poids && Number.isFinite(poids) && poids > 0 ? { poidsKg: poids } : {}),
+    ...(dimensions ? { dimensions } : {}),
   };
 }

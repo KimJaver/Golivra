@@ -6,6 +6,7 @@ export const VENDOR_HREF = {
   statistics: '/vendor/statistics' as Href,
   ordersTab: '/vendor/orders' as Href,
   deliveriesTab: '/vendor/deliveries' as Href,
+  productsTab: '/vendor/products' as Href,
   catalog: '/vendor/catalog' as Href,
   categories: '/vendor/categories' as Href,
   delivery: '/vendor/delivery' as Href,

@@ -7,6 +7,7 @@ import { VendorScreenHeader } from '@/components/vendor-screen-header';
 import { ThemedView } from '@/components/themed-view';
 import { useVendor } from '@/contexts/vendor-context';
 import { useVendorTheme } from '@/hooks/use-vendor-theme';
+import { VENDOR_HREF } from '@/lib/vendor-nav';
 
 export default function VendorAddProductScreen() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function VendorAddProductScreen() {
           onSaved={async (created) => {
             setProducts((prev) => [...prev, created]);
             await refresh();
-            router.back();
+            router.replace(VENDOR_HREF.productsTab);
           }}
         />
       </ThemedView>
@@ -56,7 +57,7 @@ export default function VendorAddProductScreen() {
           onSaved={async (created) => {
             setProducts((prev) => [...prev, created]);
             await refresh();
-            router.back();
+            router.replace(VENDOR_HREF.productsTab);
           }}
         />
       </View>

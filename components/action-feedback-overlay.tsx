@@ -44,14 +44,14 @@ export function ActionFeedbackOverlay({
     }
   }, [visible, isSuccess, isInfo]);
 
-  const handlePrimary = () => {
+  const close = () => {
+    if (isSuccess && onPrimary) onPrimary();
     onDismiss?.();
-    onPrimary?.();
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
-      <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={onDismiss}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      <Pressable style={[styles.backdrop, { backgroundColor: colors.overlay }]} onPress={close}>
         <Pressable
           style={[
             styles.card,
@@ -85,7 +85,7 @@ export function ActionFeedbackOverlay({
               styles.primaryBtn,
               { backgroundColor: isSuccess || isInfo ? colors.primary : colors.error },
             ]}
-            onPress={handlePrimary}
+            onPress={close}
             android_ripple={{ color: 'rgba(255,255,255,0.25)' }}>
             <ThemedText style={[styles.primaryTxt, { color: colors.onPrimary }]}>{primaryLabel}</ThemedText>
           </Pressable>

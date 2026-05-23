@@ -14,6 +14,7 @@ import { getSessionToken } from '@/lib/auth';
 import { menuItemToFormValues } from '@/lib/vendor-menu-item-form-init';
 import { productToFormValues } from '@/lib/vendor-product-form-init';
 import { deleteVendorProduct } from '@/lib/vendor-api';
+import { VENDOR_HREF } from '@/lib/vendor-nav';
 
 export default function VendorStockScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -34,14 +35,14 @@ export default function VendorStockScreen() {
         onSaved={async (updated) => {
           setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
           await refresh();
-          router.back();
+          router.replace(VENDOR_HREF.productsTab);
         }}
         onDelete={async (): Promise<void> => {
           const token = await getSessionToken();
           if (!token) throw new Error('Session expirée');
           await deleteVendorProduct(token, shop!.id, existing.id);
           setProducts((prev) => prev.filter((p) => p.id !== existing.id));
-          router.back();
+          router.replace(VENDOR_HREF.productsTab);
         }}
       />
     );
@@ -57,14 +58,14 @@ export default function VendorStockScreen() {
         onSaved={async (updated) => {
           setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
           await refresh();
-          router.back();
+          router.replace(VENDOR_HREF.productsTab);
         }}
         onDelete={async (): Promise<void> => {
           const token = await getSessionToken();
           if (!token) throw new Error('Session expirée');
           await deleteVendorProduct(token, shop!.id, existing.id);
           setProducts((prev) => prev.filter((p) => p.id !== existing.id));
-          router.back();
+          router.replace(VENDOR_HREF.productsTab);
         }}
       />
     );

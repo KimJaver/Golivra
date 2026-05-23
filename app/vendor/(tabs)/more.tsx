@@ -49,15 +49,28 @@ export default function VendorMoreTabScreen() {
     onPress: () => void,
     danger?: boolean
   ) => (
-    <Pressable style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: colors.primarySoft }]} onPress={onPress}>
-      <View style={[styles.menuIcon, { backgroundColor: danger ? colors.errorSoft : colors.primarySoft, borderColor: danger ? colors.border : colors.borderStrong }]}>{icon}</View>
-      <View style={{ flex: 1 }}>
-        <ThemedText type="defaultSemiBold" style={[styles.menuTitle, { color: danger ? colors.error : colors.text }, danger && styles.menuTitleDanger]}>
+    <Pressable
+      style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: colors.primarySoft }]}
+      onPress={onPress}>
+      <View
+        style={[
+          styles.menuIcon,
+          {
+            backgroundColor: danger ? colors.errorSoft : colors.primarySoft,
+            borderColor: danger ? colors.border : colors.borderStrong,
+          },
+        ]}>
+        {icon}
+      </View>
+      <View style={styles.menuText}>
+        <ThemedText
+          type="defaultSemiBold"
+          style={[styles.menuTitle, { color: danger ? colors.error : colors.text }, danger && styles.menuTitleDanger]}>
           {title}
         </ThemedText>
         <ThemedText style={[styles.menuSub, { color: colors.textMuted }]}>{subtitle}</ThemedText>
       </View>
-      <ChevronRight size={20} color={colors.textMuted} strokeWidth={LUCIDE_STROKE} />
+      <ChevronRight size={18} color={colors.textMuted} strokeWidth={LUCIDE_STROKE} />
     </Pressable>
   );
 
@@ -201,64 +214,73 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: '800',
-    marginBottom: 8,
-    marginTop: 4,
+    marginBottom: 10,
+    marginTop: 8,
+    marginLeft: 4,
     textTransform: 'uppercase',
-    letterSpacing: 0.65,
+    letterSpacing: 0.7,
   },
   screen: { flex: 1 },
-  scroll: { paddingHorizontal: 18, paddingTop: 6 },
+  scroll: { paddingHorizontal: 20, paddingTop: 8 },
   hero: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 20,
-    paddingVertical: 8,
+    gap: 14,
+    marginBottom: 24,
+    paddingVertical: 10,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     borderWidth: 2,
   },
-  shopName: { fontSize: 18 },
-  shopCat: { fontSize: 13, marginTop: 2 },
+  shopName: { fontSize: 19, fontWeight: '800' },
+  shopCat: { fontSize: 13, marginTop: 3 },
   onlinePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
   onlineTxt: { fontSize: 11, fontWeight: '800' },
   card: {
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 12 },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+  },
   menuIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
   },
-  menuTitle: { fontSize: 15 },
+  menuText: { flex: 1, gap: 2 },
+  menuTitle: { fontSize: 16 },
   menuTitleDanger: { fontWeight: '600' },
-  menuSub: { fontSize: 11, marginTop: 2 },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
+  menuSub: { fontSize: 12, lineHeight: 17 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 72 },
   logout: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginTop: 4,
   },
   logoutText: { fontSize: 15, fontWeight: '800' },
 });

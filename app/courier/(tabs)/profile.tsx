@@ -64,7 +64,7 @@ export default function CourierProfileScreen() {
         </View>
 
         <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-          <ThemedText style={[styles.cardTitle, { color: palette.primaryDeep }]}>Mon compte</ThemedText>
+          <ThemedText style={[styles.cardTitle, { color: palette.primaryDeep }]}>Mon activité</ThemedText>
           <InfoRow label="Véhicule" value={l?.type_vehicule || '—'} palette={palette} />
           {l?.plaque_immatriculation ? (
             <InfoRow label="Plaque" value={l.plaque_immatriculation} palette={palette} />
@@ -109,6 +109,7 @@ export default function CourierProfileScreen() {
           <LogOut size={18} color={palette.danger} strokeWidth={LUCIDE_STROKE} />
           <ThemedText style={[styles.logoutText, { color: palette.danger }]}>Se déconnecter</ThemedText>
         </Pressable>
+        </AppContentWidth>
       </ScrollView>
     </ThemedView>
   );
@@ -143,7 +144,7 @@ function MenuItem({
         <ThemedText style={[styles.menuLabel, { color: palette.text }]}>{label}</ThemedText>
         <ThemedText style={[styles.menuSub, { color: palette.muted }]}>{sub}</ThemedText>
       </View>
-      <ChevronRight size={20} color={palette.muted} strokeWidth={LUCIDE_STROKE} />
+      <ChevronRight size={18} color={palette.muted} strokeWidth={LUCIDE_STROKE} />
     </Pressable>
   );
 }
@@ -196,19 +197,20 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 14,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
   },
   menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuLabel: { fontWeight: '800' },
-  menuSub: { fontSize: 12, marginTop: 2 },
+  menuLabel: { fontWeight: '800', fontSize: 16 },
+  menuSub: { fontSize: 12, marginTop: 3, lineHeight: 17 },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',

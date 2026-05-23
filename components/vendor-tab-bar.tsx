@@ -98,8 +98,13 @@ export function VendorTabBar({ state, descriptors, navigation }: BottomTabBarPro
                   }}
                   style={styles.tab}
                   hitSlop={{ top: 6, bottom: 8, left: 4, right: 4 }}>
+                  {isFocused ? (
+                    <View style={[styles.activePill, { backgroundColor: palette.primarySoft }]} />
+                  ) : null}
                   {Icon ? <Icon focused={isFocused} color={color} size={22} /> : null}
-                  <Text style={[styles.label, { color }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.label, { color, fontWeight: isFocused ? '800' : '600' }]}
+                    numberOfLines={1}>
                     {typeof title === 'string' ? title : route.name}
                   </Text>
                 </PlatformPressable>
@@ -152,12 +157,19 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
-    paddingVertical: 2,
+    gap: 4,
+    paddingVertical: 4,
+    position: 'relative',
+  },
+  activePill: {
+    position: 'absolute',
+    top: 0,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   label: {
     fontSize: 10,
-    fontWeight: '700',
     letterSpacing: -0.15,
   },
 });

@@ -54,7 +54,7 @@ export default function VendorPreparationScreen() {
           onPrimary: () => router.replace(VENDOR_HREF.deliveriesTab),
         });
       } else {
-        showSuccess('C’est enregistré', successMsg);
+        showSuccess('C’est enregistré', successMsg, { onPrimary: () => router.back() });
       }
     } catch (e) {
       showError('Mise à jour impossible', e instanceof Error ? e.message : 'Réessayez.');

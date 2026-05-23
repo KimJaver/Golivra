@@ -22,17 +22,25 @@ export function VendorScreenHeader({ title, subtitle, right, onBack }: Props) {
   const colors = useAppColors();
 
   return (
-    <View style={[styles.row, { paddingTop: Math.max(insets.top, 8) }]}>
+    <View
+      style={[
+        styles.row,
+        {
+          paddingTop: Math.max(insets.top, 10),
+          borderBottomColor: colors.border,
+          backgroundColor: colors.surface,
+        },
+      ]}>
       <Pressable
-        style={styles.backBtn}
+        style={[styles.backBtn, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}
         onPress={onBack ?? (() => router.back())}
-        hitSlop={12}
+        hitSlop={10}
         accessibilityRole="button"
         accessibilityLabel="Retour">
-        <ChevronLeft size={28} color={palette.primaryDeep} strokeWidth={LUCIDE_STROKE} />
+        <ChevronLeft size={22} color={palette.primaryDeep} strokeWidth={LUCIDE_STROKE} />
       </Pressable>
       <View style={styles.titleWrap}>
-        <ThemedText type="defaultSemiBold" style={[styles.title, { color: palette.primaryDeep }]} numberOfLines={1}>
+        <ThemedText type="defaultSemiBold" style={[styles.title, { color: colors.text }]} numberOfLines={1}>
           {title}
         </ThemedText>
         {subtitle ? (
@@ -41,7 +49,7 @@ export function VendorScreenHeader({ title, subtitle, right, onBack }: Props) {
           </ThemedText>
         ) : null}
       </View>
-      <View style={styles.rightSlot}>{right}</View>
+      <View style={styles.rightSlot}>{right ?? <View style={styles.backSpacer} />}</View>
     </View>
   );
 }
@@ -50,36 +58,41 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingBottom: 10,
-    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 52,
+    gap: 10,
   },
   backBtn: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+  },
+  backSpacer: {
+    width: 40,
+    height: 40,
   },
   titleWrap: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    textAlign: 'center',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
   subtitle: {
-    textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
   },
   rightSlot: {
-    width: 44,
+    minWidth: 40,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    minHeight: 44,
   },
 });

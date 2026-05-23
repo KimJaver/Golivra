@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { Camera } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
@@ -37,6 +38,7 @@ const emptyAddr = (): DeliveryAddressFormValue => ({
 });
 
 export default function VendorShopInfoScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useAppColors();
   const { showSuccess, showError, FeedbackOverlay } = useActionFeedback();
@@ -99,31 +101,26 @@ export default function VendorShopInfoScreen() {
       const token = await getSessionToken();
       if (!token) throw new Error('Session expirée');
 
-      const patchBody: Parameters<typeof patchEnterprise>[2] = {
+      let imageUrl: string | undefined;
+      if (logoDataUrl) {
+        const uploaded = await uploadImageBase64(token, { dataUrl: logoDataUrl, folder: 'enterprises' });
+        imageUrl = uploaded.url;
+      }
+
+      await patchEnterprise(token, shop.id, {
         nom: trimmedNom,
         description: description.trim() || null,
         telephone: trimmedTel,
         adresse: address.ligne1.trim(),
         adresseQuartier: address.quartier.trim(),
         adresseVille: address.ville || 'Brazzaville',
-      };
-
-      if (logoDataUrl) {
-        try {
-          const uploaded = await uploadImageBase64(token, {
-            dataUrl: logoDataUrl,
-            folder: 'enterprises',
-          });
-          patchBody.imageUrl = uploaded.url;
-        } catch {
-          patchBody.imageDataUrl = logoDataUrl;
-        }
-      }
-
-      await patchEnterprise(token, shop.id, patchBody);
+        ...(imageUrl ? { imageUrl } : logoDataUrl ? { imageDataUrl: logoDataUrl } : {}),
+      });
       setLogoDataUrl(null);
       await refresh();
-      showSuccess('Enregistré !', 'Les informations du commerce ont été mises à jour.');
+      showSuccess('Enregistré !', 'Les informations du commerce ont été mises à jour.', {
+        onPrimary: () => router.back(),
+      });
     } catch (e) {
       showError('Enregistrement impossible', e instanceof Error ? e.message : undefined);
     } finally {

@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCourierPalette } from '@/lib/courier-theme';
 
 const TAB_ORDER = ['index', 'missions', 'profile'] as const;
@@ -19,6 +20,8 @@ function haptic() {
 export function CourierTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const palette = useCourierPalette();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const bottomPad = Math.max(insets.bottom, Platform.OS === 'ios' ? 10 : 8);
   const focusedName = state.routes[state.index]?.name;
 
@@ -30,14 +33,25 @@ export function CourierTabBar({ state, descriptors, navigation }: BottomTabBarPr
     <View style={[styles.root, { paddingBottom: bottomPad }]} pointerEvents="box-none">
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(255,255,255,0)', palette.bg === '#0B0C0E' ? 'rgba(11,12,14,0.95)' : 'rgba(244,247,245,0.95)', palette.primarySoft]}
+        colors={
+          isDark
+            ? ['rgba(16,18,20,0)', 'rgba(16,18,20,0.95)', palette.primarySoft]
+            : ['rgba(255,255,255,0)', 'rgba(246,250,247,0.95)', palette.primarySoft]
+        }
         locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.barArea}>
         <View style={[styles.track, { borderColor: palette.border }, Platform.OS === 'ios' ? { shadowColor: palette.primaryDeep, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16 } : styles.shadowAndroid]}>
-          <BlurView intensity={Platform.OS === 'ios' ? 42 : 80} tint="light" style={styles.blur} />
-          <LinearGradient colors={[palette.bg === '#0B0C0E' ? 'rgba(11,12,14,0.9)' : 'rgba(255,255,255,0.9)', palette.bg === '#0B0C0E' ? '#15171A' : '#FFFFFF']} style={styles.blur} />
+          <BlurView intensity={Platform.OS === 'ios' ? 42 : 80} tint={isDark ? 'dark' : 'light'} style={styles.blur} />
+          <LinearGradient
+            colors={
+              isDark
+                ? ['rgba(16,18,20,0.92)', palette.card]
+                : ['rgba(255,255,255,0.92)', palette.card]
+            }
+            style={styles.blur}
+          />
           <View style={styles.row}>
             {orderedRoutes.map((route) => {
               const { options } = descriptors[route.key];
@@ -87,8 +101,8 @@ const styles = StyleSheet.create({
   },
   blur: { ...StyleSheet.absoluteFillObject, borderRadius: 28 },
   shadowAndroid: { elevation: 10 },
-  row: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 6 },
-  tab: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 4 },
+  row: { flexDirection: 'row', paddingVertical: 11, paddingHorizontal: 8 },
+  tab: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 5 },
   activePill: {
     position: 'absolute',
     top: 2,

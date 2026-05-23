@@ -704,8 +704,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    paddingVertical: 15,
   },
   footerNextTxt: { fontWeight: '800', fontSize: 15 },
   modalBg: {
