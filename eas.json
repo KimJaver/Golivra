@@ -14,13 +14,17 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://golivraback.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://golivraback.onrender.com",
+        "SENTRY_ORG": "golivra",
+        "SENTRY_PROJECT": "react-native"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://golivraback.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://golivraback.onrender.com",
+        "SENTRY_ORG": "golivra",
+        "SENTRY_PROJECT": "react-native"
       }
     }
   },

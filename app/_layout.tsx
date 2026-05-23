@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
@@ -8,11 +9,14 @@ import 'react-native-reanimated';
 import { AppThemeProvider, useAppTheme } from '@/contexts/app-theme-context';
 import { stackAuthOptions, stackScreenOptions } from '@/lib/app-navigation';
 
-// Initialisation de Sentry pour le suivi des erreurs
+const sentryDsn =
+  process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ||
+  String((Constants.expoConfig?.extra as { sentryDsn?: string } | undefined)?.sentryDsn ?? '').trim();
+
 Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  dsn: sentryDsn || undefined,
   tracesSampleRate: 1.0,
-  enabled: process.env.NODE_ENV === 'production',
+  enabled: Boolean(sentryDsn) && !__DEV__,
 });
 
 export const unstable_settings = {
@@ -66,10 +70,12 @@ function RootNavigation() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <AppThemeProvider>
       <RootNavigation />
     </AppThemeProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
