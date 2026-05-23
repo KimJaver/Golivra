@@ -103,6 +103,8 @@ export type EnterprisePatchBody = {
   latitude?: number | null;
   longitude?: number | null;
   imageUrl?: string | null;
+  /** Secours si l’upload Storage échoue (enregistrement direct en base). */
+  imageDataUrl?: string | null;
 };
 
 export async function patchEnterprise(

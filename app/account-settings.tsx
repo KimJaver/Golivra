@@ -204,7 +204,7 @@ export default function AccountSettingsScreen() {
             <ChevronLeft size={26} color={isDark ? colors.primaryBright : colors.primaryDeep} strokeWidth={LUCIDE_STROKE} />
           </Pressable>
           <ThemedText type="subtitle" style={[styles.headerTitle, { color: colors.text }]}>
-            Modifier le profil
+            Connexion & sécurité
           </ThemedText>
           <View style={styles.headerSpacer} />
         </View>
@@ -221,6 +221,10 @@ export default function AccountSettingsScreen() {
             </View>
           ) : (
             <>
+              <ThemedText style={[styles.muted, { color: colors.textMuted, marginBottom: 12 }]}>
+                Compte personnel de connexion — pour le nom, la photo et l’adresse affichés aux clients, utilisez
+                « Informations restaurant / boutique » dans l’onglet Plus.
+              </ThemedText>
               {error ? (
                 <View style={[styles.bannerErr, { backgroundColor: colors.errorSoft, borderColor: colors.border }]}>
                   <ThemedText style={[styles.bannerErrText, { color: colors.error }]}>{error}</ThemedText>

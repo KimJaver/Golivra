@@ -99,21 +99,28 @@ export default function VendorShopInfoScreen() {
       const token = await getSessionToken();
       if (!token) throw new Error('Session expirée');
 
-      let imageUrl: string | undefined;
-      if (logoDataUrl) {
-        const uploaded = await uploadImageBase64(token, { dataUrl: logoDataUrl, folder: 'enterprises' });
-        imageUrl = uploaded.url;
-      }
-
-      await patchEnterprise(token, shop.id, {
+      const patchBody: Parameters<typeof patchEnterprise>[2] = {
         nom: trimmedNom,
         description: description.trim() || null,
         telephone: trimmedTel,
         adresse: address.ligne1.trim(),
         adresseQuartier: address.quartier.trim(),
         adresseVille: address.ville || 'Brazzaville',
-        ...(imageUrl ? { imageUrl } : logoDataUrl ? { imageDataUrl: logoDataUrl } : {}),
-      });
+      };
+
+      if (logoDataUrl) {
+        try {
+          const uploaded = await uploadImageBase64(token, {
+            dataUrl: logoDataUrl,
+            folder: 'enterprises',
+          });
+          patchBody.imageUrl = uploaded.url;
+        } catch {
+          patchBody.imageDataUrl = logoDataUrl;
+        }
+      }
+
+      await patchEnterprise(token, shop.id, patchBody);
       setLogoDataUrl(null);
       await refresh();
       showSuccess('Enregistré !', 'Les informations du commerce ont été mises à jour.');

@@ -14,7 +14,7 @@ export async function pickVendorImageAsset(): Promise<{ uri: string; dataUrl: st
   }
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
-    quality: 0.82,
+    quality: 0.72,
     base64: true,
     allowsEditing: true,
     aspect: [1, 1],

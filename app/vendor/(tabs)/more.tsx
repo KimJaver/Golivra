@@ -162,18 +162,21 @@ export default function VendorMoreTabScreen() {
             'Modalités de paiement clients',
             () => router.push(VENDOR_HREF.shopPayments)
           )}
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        </View>
+
+        <ThemedText style={[styles.sectionLabel, { color: colors.textMuted }]}>Compte de connexion</ThemedText>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {row(
             <User size={20} color={palette.primary} strokeWidth={LUCIDE_STROKE} />,
-            'Mon compte',
-            'Profil, mot de passe, photo',
+            'Connexion & sécurité',
+            'Votre nom, téléphone et mot de passe (pas le nom du commerce)',
             () => router.push('/account-settings')
           )}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           {row(
             <Settings size={20} color={palette.primary} strokeWidth={LUCIDE_STROKE} />,
-            'Paramètres',
-            'Sécurité et préférences',
+            'Apparence',
+            'Thème clair ou sombre',
             () => router.push(VENDOR_HREF.shopSettings)
           )}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />

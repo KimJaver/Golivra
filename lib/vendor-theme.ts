@@ -62,7 +62,7 @@ export function vendorLabels(type: VendorCommerceType): VendorUiLabels {
     return {
       productsTab: 'Menu',
       productsHeader: 'GESTION MENU',
-      profileHeader: 'PROFIL RESTAURANT',
+      profileHeader: 'MON RESTAURANT',
       dashboardRevenueLabel: "Chiffre du jour",
       dashboardStatCards: [
         { value: '12', label: 'Commandes' },
@@ -95,7 +95,7 @@ export function vendorLabels(type: VendorCommerceType): VendorUiLabels {
   return {
     productsTab: 'Produits',
     productsHeader: 'GESTION PRODUITS',
-    profileHeader: 'PROFIL BOUTIQUE',
+    profileHeader: 'MA BOUTIQUE',
     dashboardRevenueLabel: "Revenus aujourd'hui",
     dashboardStatCards: [
       { value: '28', label: 'Commandes' },
