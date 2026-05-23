@@ -18,6 +18,7 @@ import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppLogoutButton } from '@/components/app-logout-button';
 import { VendorTabHeader } from '@/components/vendor-tab-header';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
