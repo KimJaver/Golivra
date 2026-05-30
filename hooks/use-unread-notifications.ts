@@ -1,7 +1,7 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as Notifications from 'expo-notifications';
 
+import { isExpoGoAndroidPushUnavailable, loadExpoNotifications } from '@/lib/expo-notifications-module';
 import { getSessionToken } from '@/lib/auth';
 import { fetchUnreadCount } from '@/lib/notifications-api';
 
@@ -14,7 +14,7 @@ import { fetchUnreadCount } from '@/lib/notifications-api';
  */
 export function useUnreadNotifications() {
   const [count, setCount] = useState(0);
-  const listenerRef = useRef<Notifications.EventSubscription | null>(null);
+  const listenerRef = useRef<{ remove: () => void } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -29,17 +29,24 @@ export function useUnreadNotifications() {
     }
   }, []);
 
-  // Rafraîchir quand une notification arrive en foreground
   useEffect(() => {
-    listenerRef.current = Notifications.addNotificationReceivedListener(() => {
-      void refresh();
+    if (isExpoGoAndroidPushUnavailable()) return;
+
+    let alive = true;
+    void loadExpoNotifications().then((Notifications) => {
+      if (!Notifications || !alive) return;
+      listenerRef.current = Notifications.addNotificationReceivedListener(() => {
+        void refresh();
+      });
     });
+
     return () => {
+      alive = false;
       listenerRef.current?.remove();
+      listenerRef.current = null;
     };
   }, [refresh]);
 
-  // Rafraîchir à chaque focus + polling 45s
   useFocusEffect(
     useCallback(() => {
       void refresh();

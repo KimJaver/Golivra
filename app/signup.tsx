@@ -18,9 +18,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { CategoryPicker } from '@/components/category-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useActionFeedback } from '@/hooks/use-action-feedback';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { registerAccount, setSessionToken } from '@/lib/auth';
+import { registerAccount, persistAuthSession } from '@/lib/auth';
 import { createEnterpriseRemote, fetchEnterpriseCategories, type EnterpriseCreated, type EnterpriseCategory } from '@/lib/enterprise';
 import { requestOtp, verifyOtp } from '@/lib/otp';
 import { formatCgPhone, toCgE164 } from '@/lib/phone';
@@ -180,7 +181,7 @@ function SignupScreenBase({ variant, forcedProfile }: BaseProps) {
         nom: userNom, telephone: phoneE164!, motDePasse: password, otpCode: otp.trim(), imageUrl: finalProfileImageUrl || null,
         role: profile === 'vendeur' ? commerceKind === 'restaurant' ? 'restaurateur' : commerceKind === 'boutique' ? 'commercant' : 'client' : 'client',
       });
-      await setSessionToken(session.token);
+      await persistAuthSession(session);
       if (profile === 'client' && profileImageDataUrl && !finalProfileImageUrl) { finalProfileImageUrl = await uploadImageForSignup(session.token, { dataUrl: profileImageDataUrl, folder: 'profiles' }); }
       if (profile === 'vendeur' && businessImageDataUrl && !finalBusinessImageUrl) {
         try { finalBusinessImageUrl = await uploadImageForSignup(session.token, { dataUrl: businessImageDataUrl, folder: 'enterprises' }); }
@@ -196,10 +197,10 @@ function SignupScreenBase({ variant, forcedProfile }: BaseProps) {
       await new Promise<void>((r) => setTimeout(r, 0));
       const ent = enterprise as EnterpriseCreated;
       if (ent.statut_moderation === 'en_attente') {
-        Alert.alert(
+        showSuccess(
           'Compte créé',
           'Votre commerce est en attente de validation. Vous pouvez préparer votre menu ou vos produits. Les clients le verront dès qu’il sera activé.',
-          [{ text: 'Continuer', onPress: () => router.replace(VENDOR_HREF.root) }],
+          { primaryLabel: 'Continuer', onPrimary: () => router.replace(VENDOR_HREF.root) },
         );
         return;
       }

@@ -11,24 +11,14 @@
  *   import { initializeNotifications, setupNotificationListeners } from '@/lib/notifications-service';
  */
 
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 
+import { loadExpoNotifications } from '@/lib/expo-notifications-module';
 import { registerPushToken } from '@/lib/push-token-api';
 import { hrefCourierMission } from '@/lib/courier-nav';
 import { VENDOR_HREF } from '@/lib/vendor-nav';
-
-// ─── Handler foreground ───────────────────────────────────────────────────────
-// Configure comment afficher les notifs quand l'app est au premier plan.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined';
@@ -40,6 +30,9 @@ export type NotificationPermissionStatus = 'granted' | 'denied' | 'undetermined'
  * Vérifie d'abord le statut existant pour ne pas afficher le dialog inutilement.
  */
 export async function requestNotificationPermission(): Promise<NotificationPermissionStatus> {
+  const Notifications = await loadExpoNotifications();
+  if (!Notifications) return 'denied';
+
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
     if (existing === 'granted') return 'granted';
@@ -71,8 +64,10 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
  * @returns ExponentPushToken[xxx] ou null si indisponible
  */
 export async function getExpoPushToken(): Promise<string | null> {
-  // Les push ne fonctionnent pas sur web ou simulateur
   if (Platform.OS === 'web') return null;
+
+  const Notifications = await loadExpoNotifications();
+  if (!Notifications) return null;
 
   try {
     const projectId: string | undefined =
@@ -88,7 +83,6 @@ export async function getExpoPushToken(): Promise<string | null> {
     );
     return data;
   } catch (err) {
-    // Sur simulateur, cette erreur est normale
     console.warn('[notifications] getExpoPushToken error (normal sur simulateur):', err);
     return null;
   }
@@ -96,12 +90,11 @@ export async function getExpoPushToken(): Promise<string | null> {
 
 // ─── Android channel ──────────────────────────────────────────────────────────
 
-/**
- * Crée le channel Android par défaut.
- * Sans channel, les notifications ne s'affichent pas sur Android 8+.
- */
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
+
+  const Notifications = await loadExpoNotifications();
+  if (!Notifications) return;
 
   await Notifications.setNotificationChannelAsync('golivra-default', {
     name: 'GoLivra',
@@ -118,20 +111,12 @@ async function ensureAndroidChannel(): Promise<void> {
 
 /**
  * Initialise complètement le système de notifications push.
- *
- * Séquence :
- *  1. Créer le channel Android
- *  2. Demander la permission
- *  3. Récupérer le token Expo
- *  4. Enregistrer le token dans le backend
- *
- * @returns Le statut de permission final
  */
 export async function initializeNotifications(): Promise<NotificationPermissionStatus> {
-  // 1. Channel Android (no-op sur iOS)
+  if (Platform.OS === 'web') return 'denied';
+
   await ensureAndroidChannel();
 
-  // 2. Permission
   const permission = await requestNotificationPermission();
 
   if (permission !== 'granted') {
@@ -141,17 +126,15 @@ export async function initializeNotifications(): Promise<NotificationPermissionS
 
   console.log('[notifications] ✅ Permission accordée');
 
-  // 3. Token
   const token = await getExpoPushToken();
 
   if (!token) {
-    console.log('[notifications] ⚠️ Pas de token (simulateur ou erreur réseau)');
+    console.log('[notifications] ⚠️ Pas de token (simulateur, Expo Go Android ou erreur réseau)');
     return permission;
   }
 
   console.log('[notifications] 📱 Token obtenu:', token);
 
-  // 4. Enregistrement backend (fire-and-forget)
   void (async () => {
     try {
       await registerPushToken(token, Platform.OS as 'ios' | 'android' | 'web');
@@ -180,10 +163,6 @@ function getLivraisonId(data: NotifData): string | null {
   return typeof id === 'string' ? id : null;
 }
 
-/**
- * Navigue vers le bon écran en fonction des données de la notification.
- * Appelé lors d'un tap sur une notification (background ou killed).
- */
 export function handleNotificationNavigation(data: NotifData): void {
   const action = getAction(data);
 
@@ -212,54 +191,58 @@ export function handleNotificationNavigation(data: NotifData): void {
     return;
   }
 
-  // Fallback
   router.push('/notifications');
 }
 
 // ─── Listeners ────────────────────────────────────────────────────────────────
 
-/**
- * Configure les listeners de notifications.
- *
- * - `onReceived` : appelé quand une notification arrive en foreground
- * - `onResponse` : appelé quand l'utilisateur tape sur une notification
- *                  (app en background ou killed)
- *
- * @returns Fonction de nettoyage (à appeler dans le useEffect cleanup)
- */
 export function setupNotificationListeners(
-  onReceived?: (notification: Notifications.Notification) => void,
-  onResponse?: (response: Notifications.NotificationResponse) => void,
+  onReceived?: (notification: import('expo-notifications').Notification) => void,
+  onResponse?: (response: import('expo-notifications').NotificationResponse) => void,
 ): () => void {
-  const subReceived = Notifications.addNotificationReceivedListener((notification) => {
-    console.log('[notifications] 🔔 Reçue:', notification.request.content.title);
-    onReceived?.(notification);
-  });
+  if (Platform.OS === 'web') return () => undefined;
 
-  const subResponse = Notifications.addNotificationResponseReceivedListener((response) => {
-    console.log('[notifications] 👆 Tappée:', response.notification.request.content.title);
-    const data = response.notification.request.content.data;
-    handleNotificationNavigation(data as NotifData);
-    onResponse?.(response);
+  let cancelled = false;
+  let cleanup: (() => void) | undefined;
+
+  void loadExpoNotifications().then((Notifications) => {
+    if (!Notifications || cancelled) return;
+
+    const subReceived = Notifications.addNotificationReceivedListener((notification) => {
+      console.log('[notifications] 🔔 Reçue:', notification.request.content.title);
+      onReceived?.(notification);
+    });
+
+    const subResponse = Notifications.addNotificationResponseReceivedListener((response) => {
+      console.log('[notifications] 👆 Tappée:', response.notification.request.content.title);
+      const data = response.notification.request.content.data;
+      handleNotificationNavigation(data as NotifData);
+      onResponse?.(response);
+    });
+
+    cleanup = () => {
+      subReceived.remove();
+      subResponse.remove();
+    };
   });
 
   return () => {
-    subReceived.remove();
-    subResponse.remove();
+    cancelled = true;
+    cleanup?.();
   };
 }
 
-/**
- * Vérifie si l'app a été ouverte via un tap sur une notification (état killed).
- * À appeler au démarrage de l'app, une seule fois.
- */
 export async function handleInitialNotification(): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const Notifications = await loadExpoNotifications();
+  if (!Notifications) return;
+
   try {
     const response = await Notifications.getLastNotificationResponseAsync();
     if (response) {
       console.log('[notifications] 🚀 App ouverte depuis une notification');
       const data = response.notification.request.content.data;
-      // Petit délai pour laisser le routeur s'initialiser
       setTimeout(() => {
         handleNotificationNavigation(data as NotifData);
       }, 500);
@@ -269,10 +252,10 @@ export async function handleInitialNotification(): Promise<void> {
   }
 }
 
-/**
- * Annule toutes les notifications locales en attente.
- */
 export async function cancelAllNotifications(): Promise<void> {
+  const Notifications = await loadExpoNotifications();
+  if (!Notifications) return;
+
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
     await Notifications.dismissAllNotificationsAsync();
@@ -281,14 +264,14 @@ export async function cancelAllNotifications(): Promise<void> {
   }
 }
 
-/**
- * Envoie une notification locale immédiate (pour tests en dev).
- */
 export async function sendLocalNotification(
   title: string,
   body: string,
   data?: Record<string, unknown>,
 ): Promise<void> {
+  const Notifications = await loadExpoNotifications();
+  if (!Notifications) return;
+
   await Notifications.scheduleNotificationAsync({
     content: { title, body, data, sound: true },
     trigger: null,
