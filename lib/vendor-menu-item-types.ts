@@ -27,6 +27,9 @@ export type MenuItemFormValues = {
   promoFinAt: string;
   estDisponible: boolean;
   enVedette: boolean;
+  /** Facultatif : activer pour limiter la quantité (ex. plat du jour). */
+  limiterQuantite: boolean;
+  stock: string;
   tagsText: string;
   allergenes: string[];
   optionGroups: ProductOptionGroup[];
@@ -44,6 +47,8 @@ export const DEFAULT_MENU_ITEM_FORM: MenuItemFormValues = {
   promoFinAt: '',
   estDisponible: true,
   enVedette: false,
+  limiterQuantite: false,
+  stock: '',
   tagsText: '',
   allergenes: [],
   optionGroups: [],

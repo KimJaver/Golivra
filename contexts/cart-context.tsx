@@ -1,38 +1,42 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { create } from 'zustand';
 
 import { getCartItemCount, loadCart, subscribeCart } from '@/lib/cart-local';
 
-type CartContextValue = {
+type CartStore = {
   itemCount: number;
   refreshCart: () => Promise<void>;
 };
 
-const CartContext = createContext<CartContextValue | null>(null);
-
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [itemCount, setItemCount] = useState(0);
-
-  const refreshCart = useCallback(async () => {
+export const useCart = create<CartStore>((set) => ({
+  itemCount: 0,
+  refreshCart: async () => {
     const cart = await loadCart();
-    setItemCount(getCartItemCount(cart));
-  }, []);
+    const newCount = getCartItemCount(cart);
+    set({ itemCount: newCount });
+  },
+}));
 
-  useEffect(() => {
-    void refreshCart();
-    return subscribeCart(() => {
-      void refreshCart();
-    });
-  }, [refreshCart]);
-
-  const value = useMemo(() => ({ itemCount, refreshCart }), [itemCount, refreshCart]);
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+// Expose global pour mise à jour immédiate depuis cart-local
+if (typeof global !== 'undefined') {
+  (global as any).updateCartCount = (count: number) => {
+    useCart.setState({ itemCount: count });
+  };
 }
 
-export function useCart(): CartContextValue {
-  const ctx = useContext(CartContext);
-  if (!ctx) {
-    throw new Error('useCart doit être utilisé dans CartProvider');
-  }
-  return ctx;
+export function CartProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const store = useCart.getState();
+    void store.refreshCart();
+    
+    const unsubscribe = subscribeCart(() => {
+      void store.refreshCart();
+    });
+    
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  return <>{children}</>;
 }

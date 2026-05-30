@@ -55,7 +55,8 @@ const DARK = courierFromApp(AppPaletteDark);
 
 export function useCourierPalette() {
   const scheme = useColorScheme();
-  return scheme === 'dark' ? DARK : LIGHT;
+  const palette = scheme === 'dark' ? DARK : LIGHT;
+  return { ...palette, isDark: scheme === 'dark' };
 }
 
 export const COURIER_PALETTE = LIGHT;

@@ -28,6 +28,32 @@ export async function toggleFavoriteRemote(
   });
 }
 
+/**
+ * Bascule un entreprise en favori.
+ * @returns true si ajouté aux favoris, false si retiré
+ */
+export async function toggleFavorite(
+  token: string,
+  enterpriseId: string,
+  enterpriseNom: string,
+  enterpriseType?: 'restaurant' | 'boutique',
+): Promise<boolean> {
+  const result = await toggleFavoriteRemote(token, enterpriseId, enterpriseType);
+  return result.favori;
+}
+
+/**
+ * Vérifie si une entreprise est dans les favoris.
+ */
+export async function isFavorite(token: string, enterpriseId: string): Promise<boolean> {
+  try {
+    const { enterprise_ids } = await fetchFavorites(token);
+    return enterprise_ids.includes(enterpriseId);
+  } catch {
+    return false;
+  }
+}
+
 export async function syncFavoritesRemote(token: string, enterpriseIds: string[]): Promise<{
   items: FavoriteEnterprise[];
   enterprise_ids: string[];

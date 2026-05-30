@@ -50,6 +50,17 @@ export function useLogout(options: Options = { clearCart: true }) {
     setLoggingOut(true);
     try {
       hapticSuccess();
+
+      // Désinscrire le token push avant de se déconnecter
+      try {
+        const { getExpoPushToken } = await import('@/lib/notifications-service');
+        const { unregisterPushToken } = await import('@/lib/push-token-api');
+        const token = await getExpoPushToken();
+        if (token) await unregisterPushToken(token);
+      } catch {
+        // Non bloquant — le token expirera de toute façon
+      }
+
       await logoutLocal();
       if (options.clearCart !== false) {
         await saveCart(null);

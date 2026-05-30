@@ -79,7 +79,15 @@ export function HomeHeroCarousel({ slides, heroIndex, onIndexChange, onCta }: Pr
       />
       <View style={styles.dots}>
         {slides.map((_, i) => (
-          <View key={i} style={[styles.dot, i === heroIndex ? { width: 26, backgroundColor: colors.warning } : { width: 8, backgroundColor: colors.textMuted }]} />
+          <View
+            key={i}
+            style={[
+              styles.dot,
+              i === heroIndex
+                ? { width: 20, backgroundColor: colors.primary, opacity: 0.85 }
+                : { width: 6, backgroundColor: colors.textMuted, opacity: 0.35 },
+            ]}
+          />
         ))}
       </View>
     </View>
@@ -94,11 +102,11 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(6,25,18,0.08)',
-    elevation: 2,
+    borderColor: 'rgba(6,25,18,0.06)',
+    elevation: 1,
   },
   ctaBar: {
     position: 'absolute',

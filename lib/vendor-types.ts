@@ -1,3 +1,4 @@
+import type { TimelineStep } from '@/lib/datetime';
 import type { VendorCommerceType } from '@/lib/vendor-theme';
 import type { ProductOptionGroup } from '@/lib/vendor-product-types';
 
@@ -60,6 +61,12 @@ export type VendorOrder = {
   livreur?: { nom: string; tel: string };
   livraison_statut?: string | null;
   created_at?: string;
+  commande_timeline?: TimelineStep[];
+  sous_commande_timeline?: TimelineStep[];
+  livraison_timeline?: TimelineStep[];
+  livree_at_label?: string | null;
+  attribuee_at_label?: string | null;
+  created_at_label?: string | null;
 };
 
 export type VendorProduct = {

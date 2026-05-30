@@ -47,6 +47,7 @@ import {
   type PublicPricing,
 } from '@/lib/pricing';
 import { validatePromoCode, type PromoValidation } from '@/lib/promo-api';
+import { effectiveStockCap, UNLIMITED_STOCK_CAP } from '@/lib/product-stock';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useActionFeedback } from '@/hooks/use-action-feedback';
 import { useAppColors } from '@/hooks/use-app-colors';
@@ -84,6 +85,7 @@ export default function CartScreen() {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [pricing, setPricing] = useState<PublicPricing | null>(null);
+  const orderInFlight = useRef(false);
 
   const syncStockFromCart = useCallback(async (c: CartState) => {
     try {
@@ -103,7 +105,7 @@ export default function CartScreen() {
         emap[r.segId] = r.ent;
         for (const p of r.products) {
           pmap[p.id] = p;
-          stock[p.id] = Math.max(0, Math.floor(Number(p.stock)));
+          stock[p.id] = effectiveStockCap(p);
         }
       }
       setStockByProduct(stock);
@@ -218,7 +220,7 @@ export default function CartScreen() {
     (productId: string, lineStock?: number) => {
       const live = stockByProduct[productId];
       if (live !== undefined) return live;
-      return lineStock ?? 999;
+      return lineStock ?? UNLIMITED_STOCK_CAP;
     },
     [stockByProduct]
   );
@@ -240,6 +242,7 @@ export default function CartScreen() {
 
   const submitOrder = async () => {
     if (!cart || cart.segments.length === 0) return;
+    if (orderInFlight.current || submitting) return;
     if (!isDeliveryAddressComplete(address)) {
       showError('Adresse incomplète', 'Choisissez un arrondissement et décrivez où livrer.');
       return;

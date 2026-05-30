@@ -1,10 +1,11 @@
 import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import {
   Building2,
   Clock,
+  Heart,
   MapPin,
   Package,
   Phone,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 
+import { ScreenEmptyState, ScreenLoadState } from '@/components/screen-load-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { createEnterpriseDetailStyles } from '@/constants/enterprise-detail-styles';
@@ -27,11 +29,13 @@ import { peekEnterpriseById, peekProductsForEnterprise } from '@/lib/client-data
 import { addProductToCartPrompt } from '@/lib/cart-local';
 import { formatFcfa } from '@/lib/format';
 import { resolveRemoteImageUrl } from '@/lib/images';
-
-function numStock(stock: number | string | undefined): number {
-  const n = Number(stock);
-  return Number.isFinite(n) ? Math.floor(n) : 0;
-}
+import {
+  effectiveStockCap,
+  isProductOrderable,
+  stockDisplayLabel,
+} from '@/lib/product-stock';
+import { toggleFavorite, isFavorite } from '@/lib/favorites-api';
+import { getSessionToken } from '@/lib/auth';
 
 function numPrice(prix: number | string): number {
   const n = Number(prix);
@@ -48,7 +52,10 @@ export default function EnterpriseDetailScreen() {
   const [enterprise, setEnterprise] = useState<EnterprisePublic | null>(null);
   const [products, setProducts] = useState<ProductPublic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   const reload = useCallback(async (force = false) => {
     if (!id) return;
@@ -57,8 +64,12 @@ export default function EnterpriseDetailScreen() {
     const cachedProds = peekProductsForEnterprise(id);
     if (cachedEnt) setEnterprise(cachedEnt);
     if (cachedProds) setProducts(cachedProds);
-    if (!cachedEnt && !cachedProds) setLoading(true);
-    else setLoading(false);
+    const hasCache = Boolean(cachedEnt || cachedProds);
+    if (!hasCache) setLoading(true);
+    else {
+      setLoading(false);
+      setRefreshing(true);
+    }
 
     try {
       const [ent, prods] = await Promise.all([
@@ -73,18 +84,64 @@ export default function EnterpriseDetailScreen() {
       if (!cachedProds) setProducts([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [id]);
+
+  // Vérifier le statut favori et le token
+  useEffect(() => {
+    let alive = true;
+    const checkFavorite = async () => {
+      try {
+        const t = await getSessionToken();
+        if (!alive || !t) return;
+        setToken(t);
+        if (id) {
+          const favorited = await isFavorite(t, id);
+          if (alive) setIsFavorited(favorited);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    void checkFavorite();
+    return () => { alive = false; };
   }, [id]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
+  const handleToggleFavorite = useCallback(async () => {
+    if (!token || !enterprise) return;
+    try {
+      const newStatus = await toggleFavorite(token, enterprise.id, enterprise.nom ?? 'Commerce', enterprise.type);
+      setIsFavorited(newStatus);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur lors de la mise à jour des favoris.');
+    }
+  }, [token, enterprise]);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       title: enterprise?.nom ?? 'Commerce',
+      headerRight: enterprise ? () => (
+        <Pressable
+          onPress={handleToggleFavorite}
+          style={({ pressed }) => [
+            { padding: 8, borderRadius: 20, backgroundColor: pressed ? colors.primarySoft : 'transparent' },
+          ]}
+          hitSlop={10}>
+          <Heart
+            size={24}
+            color={isFavorited ? colors.primary : colors.textMuted}
+            fill={isFavorited ? colors.primary : 'none'}
+            strokeWidth={LUCIDE_STROKE}
+          />
+        </Pressable>
+      ) : undefined,
     });
-  }, [navigation, enterprise?.nom]);
+  }, [navigation, enterprise?.nom, isFavorited, handleToggleFavorite, colors]);
 
   const hero = resolveRemoteImageUrl(enterprise?.image_url);
   const isRestaurant = enterprise?.type === 'restaurant';
@@ -93,7 +150,6 @@ export default function EnterpriseDetailScreen() {
 
   const addProduct = (p: ProductPublic) => {
     if (!enterprise) return;
-    const stock = numStock(p.stock);
     const prix = numPrice(p.prix);
     addProductToCartPrompt({
       enterpriseId: enterprise.id,
@@ -102,7 +158,7 @@ export default function EnterpriseDetailScreen() {
       productId: p.id,
       nom: p.nom ?? 'Produit',
       prixUnitaire: prix,
-      stockAvailable: stock,
+      stockAvailable: effectiveStockCap(p),
       onDone: () => {},
     });
   };
@@ -115,23 +171,31 @@ export default function EnterpriseDetailScreen() {
     );
   }
 
-  if (loading) {
+  if (loading && !enterprise) {
     return (
       <ThemedView style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <ThemedText style={styles.muted}>Chargement…</ThemedText>
+        <ScreenLoadState message="Chargement du commerce…" />
       </ThemedView>
     );
   }
 
-  if (error || !enterprise) {
+  if (!loading && !refreshing && (error || !enterprise)) {
     return (
       <ThemedView style={styles.center}>
         <Building2 size={44} color={colors.placeholder} strokeWidth={LUCIDE_STROKE} />
-        <ThemedText style={styles.errTitle}>{error ?? 'Commerce introuvable.'}</ThemedText>
-        <Pressable style={styles.retry} onPress={() => void reload()}>
-          <ThemedText style={styles.retryText}>Réessayer</ThemedText>
-        </Pressable>
+        <ScreenEmptyState
+          title="Commerce indisponible"
+          body={error ?? 'Ce commerce est fermé ou n’existe plus.'}
+          onRetry={() => void reload(true)}
+        />
+      </ThemedView>
+    );
+  }
+
+  if (!enterprise) {
+    return (
+      <ThemedView style={styles.center}>
+        <ScreenLoadState message="Chargement du commerce…" />
       </ThemedView>
     );
   }
@@ -197,10 +261,10 @@ export default function EnterpriseDetailScreen() {
           </View>
         ) : (
           products.map((p) => {
-            const stock = numStock(p.stock);
             const prix = numPrice(p.prix);
             const img = resolveRemoteImageUrl(p.image_url);
-            const disabled = stock <= 0;
+            const disabled = !isProductOrderable(p);
+            const stockLabel = stockDisplayLabel(p);
             return (
               <View key={p.id} style={styles.productCard}>
                 <View style={styles.productThumb}>
@@ -222,9 +286,11 @@ export default function EnterpriseDetailScreen() {
                     </ThemedText>
                   ) : null}
                   <ThemedText style={styles.productPrice}>{formatFcfa(prix)}</ThemedText>
-                  <ThemedText style={[styles.stock, disabled && styles.stockOut]}>
-                    {disabled ? 'Rupture de stock' : `Stock : ${stock}`}
-                  </ThemedText>
+                  {stockLabel ? (
+                    <ThemedText style={[styles.stock, disabled && styles.stockOut]}>{stockLabel}</ThemedText>
+                  ) : disabled ? (
+                    <ThemedText style={[styles.stock, styles.stockOut]}>Indisponible</ThemedText>
+                  ) : null}
                 </View>
                 <Pressable
                   style={[styles.addBtn, disabled && styles.addBtnDisabled]}

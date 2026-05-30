@@ -1,26 +1,22 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { create } from 'zustand';
 
 import { getSessionToken } from '@/lib/auth';
 import { fetchMyEnterprises, type EnterpriseCreated } from '@/lib/enterprise';
 import { resolveRemoteImageUrl } from '@/lib/images';
-import {
-  fetchVendorOrders,
-  fetchVendorProducts,
-} from '@/lib/vendor-api';
+import { fetchVendorOrders, fetchVendorProducts } from '@/lib/vendor-api';
 import type { VendorCommerceType } from '@/lib/vendor-theme';
 import type { VendorOrder, VendorProduct, VendorShop } from '@/lib/vendor-types';
 
-type VendorContextValue = {
+type VendorStore = {
   loading: boolean;
   shop: VendorShop | null;
   orders: VendorOrder[];
   products: VendorProduct[];
   pendingModeration: boolean;
   refresh: () => Promise<void>;
-  setProducts: React.Dispatch<React.SetStateAction<VendorProduct[]>>;
+  setProducts: (updater: VendorProduct[] | ((prev: VendorProduct[]) => VendorProduct[])) => void;
 };
-
-const VendorContext = createContext<VendorContextValue | null>(null);
 
 function mapEnterpriseToShop(e: EnterpriseCreated): VendorShop {
   const type: VendorCommerceType = e.type === 'restaurant' ? 'restaurant' : 'boutique';
@@ -43,19 +39,17 @@ function mapEnterpriseToShop(e: EnterpriseCreated): VendorShop {
   };
 }
 
-export function VendorProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState(true);
-  const [shop, setShop] = useState<VendorShop | null>(null);
-  const [orders, setOrders] = useState<VendorOrder[]>([]);
-  const [products, setProducts] = useState<VendorProduct[]>([]);
-
-  const refresh = useCallback(async () => {
+export const useVendor = create<VendorStore>((set) => ({
+  loading: true,
+  shop: null,
+  orders: [],
+  products: [],
+  pendingModeration: false,
+  refresh: async () => {
+    set({ loading: true });
     const token = await getSessionToken();
     if (!token) {
-      setShop(null);
-      setOrders([]);
-      setProducts([]);
-      setLoading(false);
+      set({ shop: null, orders: [], products: [], pendingModeration: false, loading: false });
       return;
     }
 
@@ -63,61 +57,40 @@ export function VendorProvider({ children }: { children: ReactNode }) {
       const enterprises = await fetchMyEnterprises(token);
       const primary = enterprises[0] ?? null;
       if (!primary) {
-        setShop(null);
-        setOrders([]);
-        setProducts([]);
-        setLoading(false);
+        set({ shop: null, orders: [], products: [], pendingModeration: false, loading: false });
         return;
       }
 
       const mapped = mapEnterpriseToShop(primary);
-      setShop(mapped);
 
       const [ordersData, productsData] = await Promise.all([
         fetchVendorOrders(token).catch(() => [] as VendorOrder[]),
         fetchVendorProducts(token, primary.id).catch(() => [] as VendorProduct[]),
       ]);
 
-      setOrders(ordersData);
-      setProducts(productsData);
+      set({
+        shop: mapped,
+        orders: ordersData,
+        products: productsData,
+        pendingModeration: mapped.statut_moderation === 'en_attente',
+      });
     } catch {
-      setShop(null);
-      setOrders([]);
-      setProducts([]);
+      set({ shop: null, orders: [], products: [], pendingModeration: false });
     } finally {
-      setLoading(false);
+      set({ loading: false });
     }
+  },
+  setProducts: (updater) => {
+    set((state) => ({
+      products: typeof updater === 'function' ? updater(state.products) : updater,
+    }));
+  },
+}));
+
+export function VendorProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    void useVendor.getState().refresh();
   }, []);
 
-  useEffect(() => {
-    void refresh().catch(() => {
-      setShop(null);
-      setOrders([]);
-      setProducts([]);
-      setLoading(false);
-    });
-  }, [refresh]);
-
-  const pendingModeration = shop?.statut_moderation === 'en_attente';
-
-  const value = useMemo(
-    () => ({
-      loading,
-      shop,
-      orders,
-      products,
-      pendingModeration,
-      refresh,
-      setProducts,
-    }),
-    [loading, shop, orders, products, pendingModeration, refresh],
-  );
-
-  return <VendorContext.Provider value={value}>{children}</VendorContext.Provider>;
-}
-
-export function useVendor() {
-  const ctx = useContext(VendorContext);
-  if (!ctx) throw new Error('useVendor must be used within VendorProvider');
-  return ctx;
+  return <>{children}</>;
 }

@@ -2,7 +2,7 @@ import type { Router } from 'expo-router';
 
 import type { AppNotification } from '@/lib/notifications-api';
 import { hrefCourierMission } from '@/lib/courier-nav';
-import { VENDOR_HREF } from '@/lib/vendor-types';
+import { VENDOR_HREF } from '@/lib/vendor-nav';
 
 function actionFromData(data: AppNotification['data']): string | null {
   if (!data || typeof data !== 'object') return null;

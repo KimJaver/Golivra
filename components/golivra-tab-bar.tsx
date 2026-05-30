@@ -46,8 +46,8 @@ export function GolivraTabBar({ state, descriptors, navigation }: BottomTabBarPr
       typeof options.title === 'string'
         ? options.title
         : typeof options.tabBarLabel === 'string'
-          ? options.tabBarLabel
-          : route.name;
+        ? options.tabBarLabel
+        : route.name;
     const color = isFocused ? colors.primary : colors.tabInactive;
     const Icon = options.tabBarIcon;
 
@@ -58,7 +58,15 @@ export function GolivraTabBar({ state, descriptors, navigation }: BottomTabBarPr
         target: route.key,
         canPreventDefault: true,
       });
-      if (!isFocused && !event.defaultPrevented) {
+      if (event.defaultPrevented) return;
+
+      // Marketplace a une pile (liste → commerce) : toujours revenir à la liste.
+      if (route.name === 'marketplace') {
+        navigation.navigate('(tabs)', { screen: 'marketplace' });
+        return;
+      }
+
+      if (!isFocused) {
         navigation.navigate(route.name as never);
       }
     };

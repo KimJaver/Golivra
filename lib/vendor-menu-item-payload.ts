@@ -31,6 +31,10 @@ export function buildMenuItemApiBody(
     description: values.description.trim() || undefined,
     prix,
     prixPromo: prixPromo && prixPromo > 0 ? prixPromo : null,
+    stockIllimite: !values.limiterQuantite,
+    stock: values.limiterQuantite && values.stock.trim()
+      ? Math.max(0, Math.floor(Number(values.stock)))
+      : null,
     imageUrl: uploaded.mainUrl,
     categorieId: values.categorieId,
     estEnVedette: values.enVedette,

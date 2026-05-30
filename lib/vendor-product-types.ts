@@ -64,7 +64,7 @@ export const DEFAULT_PRODUCT_FORM: VendorProductFormValues = {
   promoDebutAt: '',
   promoFinAt: '',
   stock: '',
-  stockIllimite: false,
+  stockIllimite: true,
   reference: '',
   unite: 'pièce',
   poidsKg: '',

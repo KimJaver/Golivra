@@ -88,10 +88,11 @@ export default function FavoritesScreen() {
               <ThemedText style={[styles.muted, { color: colors.textMuted }]}>Chargement…</ThemedText>
             </View>
           ) : error ? (
-            <View style={[styles.stateCard, styles.stateError, { borderColor: colors.errorSoft, backgroundColor: colors.surface }]}>
-              <ThemedText style={[styles.stateTitle, { color: colors.error }]}>{error}</ThemedText>
-              <Pressable style={[styles.retry, { backgroundColor: colors.primary }]} onPress={() => void load()}>
-                <ThemedText style={[styles.retryText, { color: colors.surface }]}>Réessayer</ThemedText>
+            <View style={[styles.stateCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <ActivityIndicator color={colors.primary} />
+              <ThemedText style={[styles.stateBody, { color: colors.textMuted }]}>Chargement des favoris…</ThemedText>
+              <Pressable style={[styles.retry, { backgroundColor: colors.primary }]} onPress={() => void load(true)}>
+                <ThemedText style={[styles.retryText, { color: colors.surface }]}>Actualiser</ThemedText>
               </Pressable>
             </View>
           ) : favoriteIds.length === 0 ? (

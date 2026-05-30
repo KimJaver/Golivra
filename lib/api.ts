@@ -9,9 +9,12 @@ export function apiUrl(path: string): string {
   return `${getApiOrigin()}${apiPath}`;
 }
 
-export type ApiFetchOptions = RequestInit & {
+import { z } from 'zod';
+
+export type ApiFetchOptions<T = unknown> = RequestInit & {
   token?: string | null;
   jsonBody?: unknown;
+  schema?: z.ZodSchema<T>;
 };
 
 function extractErrorMessage(parsed: unknown, text: string, status: number): string {
@@ -34,8 +37,8 @@ function networkErrorMessage(cause: unknown): string {
   return friendlyErrorMessage(cause, UX_ERRORS.network);
 }
 
-export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { token, jsonBody, headers: initHeaders, body, ...rest } = options;
+export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions<T> = {}): Promise<T> {
+  const { token, jsonBody, headers: initHeaders, body, schema, ...rest } = options;
   const headers = new Headers(initHeaders);
 
   let finalBody = body;
@@ -74,5 +77,16 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     throw new Error(extractErrorMessage(parsed, text, res.status));
   }
 
+  if (schema) {
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+      console.warn(`[Zod Error] ${path}:`, result.error.format());
+      // On loggue mais on ne plante pas l'app pour éviter les crashs inattendus en prod
+      return parsed as T;
+    }
+    return result.data;
+  }
+
   return parsed as T;
 }
+

@@ -14,6 +14,8 @@ export function menuItemToFormValues(product: VendorProduct): MenuItemFormValues
     promoFinAt: product.promoFinAt ? product.promoFinAt.slice(0, 10) : '',
     estDisponible: product.enLigne,
     enVedette: product.enVedette === true,
+    limiterQuantite: product.stockIllimite !== true,
+    stock: product.stockIllimite ? '' : String(product.stock),
     tagsText: tagsToText(product.tags),
     allergenes: Array.isArray(product.allergenes) ? [...product.allergenes] : [],
     optionGroups: product.optionGroups?.length ? product.optionGroups : [],

@@ -27,7 +27,9 @@ export type ProductPublic = {
   nom: string | null;
   description?: string | null;
   prix: number | string;
-  stock: number | string;
+  stock?: number | string | null;
+  stock_illimite?: boolean;
+  est_disponible?: boolean;
   image_url?: string | null;
 };
 

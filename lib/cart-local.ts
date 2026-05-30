@@ -5,7 +5,10 @@ const STORAGE_KEY = 'golivra_cart_v1';
 type CartListener = () => void;
 const cartListeners = new Set<CartListener>();
 
-/** Nombre total d’articles (somme des quantités). */
+// Compteur global synchronisé avec le contexte React
+export let currentCartCount = 0;
+
+/** Nombre total d'articles (somme des quantités). */
 export function getCartItemCount(cart: CartState | null): number {
   if (!cart?.segments?.length) return 0;
   return cart.segments.reduce(
@@ -20,7 +23,22 @@ export function subscribeCart(listener: CartListener): () => void {
 }
 
 function notifyCartChanged(): void {
-  cartListeners.forEach((fn) => fn());
+  // Calcul immédiat du nouveau compteur
+  const newCount = currentCartCount;
+  
+  // Mise à jour via la fonction globale si disponible (React)
+  if (typeof global !== 'undefined' && (global as any).updateCartCount) {
+    (global as any).updateCartCount(newCount);
+  }
+  
+  // Notification synchrone pour une mise à jour immédiate
+  cartListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (e) {
+      console.error('Error in cart listener:', e);
+    }
+  });
 }
 
 export type CartLine = {
@@ -116,6 +134,7 @@ export async function loadCart(): Promise<CartState | null> {
 export async function saveCart(state: CartState | null): Promise<void> {
   if (!state) {
     await AsyncStorage.removeItem(STORAGE_KEY);
+    currentCartCount = 0;
     notifyCartChanged();
     void pushCartToServer(null);
     return;
@@ -123,12 +142,15 @@ export async function saveCart(state: CartState | null): Promise<void> {
   const segments = state.segments.filter((s) => s.lines.length > 0);
   if (segments.length === 0) {
     await AsyncStorage.removeItem(STORAGE_KEY);
+    currentCartCount = 0;
     notifyCartChanged();
     void pushCartToServer(null);
     return;
   }
   const payload = { segments };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  // Mise à jour immédiate du compteur avant même la notification
+  currentCartCount = getCartItemCount({ segments });
   notifyCartChanged();
   void pushCartToServer(payload);
 }

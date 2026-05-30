@@ -1,13 +1,19 @@
 import * as Sentry from '@sentry/react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import 'react-native-reanimated';
 
 import { AppThemeProvider, useAppTheme } from '@/contexts/app-theme-context';
 import { stackAuthOptions, stackScreenOptions } from '@/lib/app-navigation';
+import {
+  initializeNotifications,
+  setupNotificationListeners,
+  handleInitialNotification,
+} from '@/lib/notifications-service';
 
 const sentryDsn =
   process.env.EXPO_PUBLIC_SENTRY_DSN?.trim() ||
@@ -25,6 +31,27 @@ export const unstable_settings = {
 
 function RootNavigation() {
   const { colors, isDark } = useAppTheme();
+
+  // ── Initialisation des notifications push au démarrage ──────────────────
+  useEffect(() => {
+    // Initialise permission + channel Android + enregistrement token
+    void initializeNotifications();
+
+    // Gère le cas où l'app est ouverte depuis une notification (état killed)
+    void handleInitialNotification();
+
+    // Configure les listeners foreground + tap (background)
+    const cleanup = setupNotificationListeners(
+      // Notification reçue en foreground (optionnel : logique supplémentaire)
+      (_notification) => {
+        // Ex : rafraîchir le badge ou le compteur non lu
+      },
+      // Notification tappée (navigation gérée automatiquement dans setupNotificationListeners)
+      (_response) => {},
+    );
+
+    return cleanup;
+  }, []);
 
   const navTheme = useMemo(
     () => ({
@@ -70,12 +97,26 @@ function RootNavigation() {
   );
 }
 
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: true,
+    },
+  },
+});
+
 function RootLayout() {
   return (
-    <AppThemeProvider>
-      <RootNavigation />
-    </AppThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <AppThemeProvider>
+        <RootNavigation />
+      </AppThemeProvider>
+    </QueryClientProvider>
   );
 }
 
 export default Sentry.wrap(RootLayout);
+

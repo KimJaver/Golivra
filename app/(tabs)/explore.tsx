@@ -230,8 +230,7 @@ function OrdersScreenInner({
         <Pressable
           key={o.id}
           style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.cardPressed]}
-          onPress={() => canOpenCommerce && router.push(`/(tabs)/marketplace/${o.entreprise_id}`)}
-          disabled={!canOpenCommerce}
+          onPress={() => router.push(`/order-tracking/${o.id}`)}
           android_ripple={{ color: colors.primarySoft }}>
           <View style={styles.cardTop}>
             <ThemedText type="defaultSemiBold" style={[styles.orderId, { color: colors.text }]}>
@@ -265,8 +264,7 @@ function OrdersScreenInner({
       <Pressable
         key={o.id}
         style={({ pressed }) => [styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.cardPressed]}
-        onPress={() => canOpenCommerce && router.push(`/(tabs)/marketplace/${o.entreprise_id}`)}
-        disabled={!canOpenCommerce}
+        onPress={() => router.push(`/order-tracking/${o.id}`)}
         android_ripple={{ color: colors.primarySoft }}>
         <View style={styles.cardTop}>
           <ThemedText type="defaultSemiBold" style={[styles.orderId, { color: colors.text }]}>

@@ -110,6 +110,12 @@ export function VendorMenuItemFormWizard({
         return 'Ajoutez une photo du plat.';
       }
     }
+    if (s === 4 && values.limiterQuantite) {
+      const q = Number(values.stock);
+      if (!values.stock.trim() || !Number.isFinite(q) || q < 0) {
+        return 'Indiquez une quantité disponible ou désactivez la limite.';
+      }
+    }
     return null;
   };
 
@@ -361,6 +367,34 @@ export function VendorMenuItemFormWizard({
                 thumbColor={values.enVedette ? palette.primary : colors.surfaceMuted}
               />
             </View>
+            <View style={styles.switchRow}>
+              <ThemedText style={[styles.labelInline, { color: colors.text }]}>Limiter la quantité</ThemedText>
+              <Switch
+                value={values.limiterQuantite}
+                onValueChange={(v) => patch({ limiterQuantite: v, stock: v ? values.stock : '' })}
+                trackColor={{ false: colors.borderStrong, true: colors.success }}
+                thumbColor={values.limiterQuantite ? palette.primary : colors.surfaceMuted}
+              />
+            </View>
+            {values.limiterQuantite ? (
+              <>
+                <ThemedText style={[styles.label, { color: colors.textSecondary }]}>
+                  Quantité disponible (optionnel — ex. plat du jour)
+                </ThemedText>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.surfaceMuted, borderColor: colors.border, color: colors.text }]}
+                  value={values.stock}
+                  onChangeText={(t) => patch({ stock: t })}
+                  keyboardType="numeric"
+                  placeholder="20"
+                  placeholderTextColor={colors.placeholder}
+                />
+              </>
+            ) : (
+              <ThemedText style={[styles.stockHint, { color: colors.textMuted }]}>
+                Sans limite de stock — le plat reste commandable tant qu’il est marqué disponible.
+              </ThemedText>
+            )}
             <ThemedText style={[styles.label, { color: colors.textSecondary }]}>Tags (séparés par des virgules)</ThemedText>
             <TextInput
               style={[styles.input, styles.area, { backgroundColor: colors.surfaceMuted, borderColor: colors.border, color: colors.text }]}
@@ -587,6 +621,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 14,
   },
+  stockHint: { fontSize: 13, lineHeight: 18, marginTop: 8 },
   previewCard: {
     marginTop: 20,
     borderWidth: 1,
