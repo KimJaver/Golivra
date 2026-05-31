@@ -4,11 +4,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo } from 'react';
+import { Platform, View } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
 import 'react-native-reanimated';
 
+import { BiometricAppGate } from '@/components/biometric-app-gate';
+import { OfflineBanner } from '@/components/offline-banner';
 import { AppThemeProvider, useAppTheme } from '@/contexts/app-theme-context';
+import { useIsOffline } from '@/hooks/use-network-status';
+import { warmAppCaches } from '@/lib/app-bootstrap';
+import { prefetchClientCatalog } from '@/lib/client-data';
 import { stackAuthOptions, stackScreenOptions } from '@/lib/app-navigation';
+import { installGlobalErrorReporting } from '@/lib/error-reporting';
 import {
   initializeNotifications,
   setupNotificationListeners,
@@ -32,21 +39,19 @@ export const unstable_settings = {
 function RootNavigation() {
   const { colors, isDark } = useAppTheme();
 
-  // ── Initialisation des notifications push au démarrage ──────────────────
   useEffect(() => {
-    // Initialise permission + channel Android + enregistrement token
-    void initializeNotifications();
+    installGlobalErrorReporting();
+  }, []);
 
-    // Gère le cas où l'app est ouverte depuis une notification (état killed)
+  // ── Initialisation des notifications push au démarrage (natif uniquement) ──
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    void initializeNotifications();
     void handleInitialNotification();
 
-    // Configure les listeners foreground + tap (background)
     const cleanup = setupNotificationListeners(
-      // Notification reçue en foreground (optionnel : logique supplémentaire)
-      (_notification) => {
-        // Ex : rafraîchir le badge ou le compteur non lu
-      },
-      // Notification tappée (navigation gérée automatiquement dans setupNotificationListeners)
+      (_notification) => {},
       (_response) => {},
     );
 
@@ -101,18 +106,46 @@ function RootNavigation() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+      staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: true,
+      networkMode: 'offlineFirst',
     },
   },
 });
 
+function useSilentReconnectRefresh() {
+  const offline = useIsOffline();
+  const wasOffline = useRef(false);
+
+  useEffect(() => {
+    if (offline) {
+      wasOffline.current = true;
+      return;
+    }
+    if (wasOffline.current) {
+      wasOffline.current = false;
+      prefetchClientCatalog();
+      void queryClient.invalidateQueries();
+    }
+  }, [offline]);
+}
+
 function RootLayout() {
+  useEffect(() => {
+    void warmAppCaches();
+  }, []);
+  useSilentReconnectRefresh();
+
   return (
     <QueryClientProvider client={queryClient}>
       <AppThemeProvider>
-        <RootNavigation />
+        <BiometricAppGate>
+          <View style={{ flex: 1 }}>
+            <OfflineBanner />
+            <RootNavigation />
+          </View>
+        </BiometricAppGate>
       </AppThemeProvider>
     </QueryClientProvider>
   );

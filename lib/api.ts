@@ -1,4 +1,6 @@
 import { getApiOrigin } from '@/lib/config';
+import { createRequestId } from '@/lib/request-id';
+import { reportAppIncident } from '@/lib/error-reporting';
 import { UX_ERRORS, friendlyErrorMessage } from '@/lib/ux-copy';
 
 export { getApiOrigin };
@@ -10,11 +12,15 @@ export function apiUrl(path: string): string {
 }
 
 import { z } from 'zod';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 export type ApiFetchOptions<T = unknown> = RequestInit & {
   token?: string | null;
   jsonBody?: unknown;
   schema?: z.ZodSchema<T>;
+  /** Ne pas remonter l'incident à l'admin (ex. rapport observability). */
+  skipIncidentReport?: boolean;
 };
 
 function extractErrorMessage(parsed: unknown, text: string, status: number): string {
@@ -33,13 +39,27 @@ function extractErrorMessage(parsed: unknown, text: string, status: number): str
   return friendlyErrorMessage(trimmed || UX_ERRORS.generic);
 }
 
+function extractErrorCode(parsed: unknown): string | undefined {
+  if (typeof parsed === 'object' && parsed !== null && 'code' in parsed) {
+    const code = (parsed as { code: unknown }).code;
+    return typeof code === 'string' ? code : undefined;
+  }
+  return undefined;
+}
+
 function networkErrorMessage(cause: unknown): string {
   return friendlyErrorMessage(cause, UX_ERRORS.network);
 }
 
 export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptions<T> = {}): Promise<T> {
-  const { token, jsonBody, headers: initHeaders, body, schema, ...rest } = options;
+  const { token, jsonBody, headers: initHeaders, body, schema, skipIncidentReport, ...rest } = options;
   const headers = new Headers(initHeaders);
+  const requestId = createRequestId();
+
+  headers.set('X-Request-Id', requestId);
+  headers.set('X-Client-Source', 'mobile');
+  headers.set('X-App-Version', Constants.expoConfig?.version ?? '1.0.0');
+  headers.set('X-Platform', Platform.OS);
 
   let finalBody = body;
   if (jsonBody !== undefined) {
@@ -52,6 +72,7 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
   }
 
   const url = apiUrl(path);
+  const method = (rest.method || 'GET').toUpperCase();
   let res: Response;
   try {
     res = await fetch(url, {
@@ -60,7 +81,20 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
       body: finalBody,
     });
   } catch (cause) {
-    throw new Error(networkErrorMessage(cause));
+    const message = networkErrorMessage(cause);
+    if (!skipIncidentReport) {
+      void reportAppIncident({
+        requestId,
+        title: 'API injoignable',
+        message,
+        category: 'network',
+        httpMethod: method,
+        httpPath: path,
+        severity: 'error',
+        metadata: { url },
+      });
+    }
+    throw new Error(message);
   }
 
   const text = await res.text();
@@ -73,15 +107,41 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
     }
   }
 
+  const responseRequestId =
+    (typeof parsed === 'object' &&
+      parsed !== null &&
+      'requestId' in parsed &&
+      typeof (parsed as { requestId: unknown }).requestId === 'string' &&
+      (parsed as { requestId: string }).requestId) ||
+    res.headers.get('X-Request-Id') ||
+    requestId;
+
   if (!res.ok) {
-    throw new Error(extractErrorMessage(parsed, text, res.status));
+    const message = extractErrorMessage(parsed, text, res.status);
+    const code = extractErrorCode(parsed);
+    if (!skipIncidentReport && res.status !== 401) {
+      void reportAppIncident({
+        requestId: responseRequestId,
+        title: `Erreur API ${res.status}`,
+        message,
+        code,
+        httpMethod: method,
+        httpPath: path,
+        httpStatus: res.status,
+        category: res.status >= 500 ? 'api' : 'validation',
+        severity: res.status >= 500 ? 'error' : 'warn',
+      });
+    }
+    const err = new Error(message) as Error & { requestId?: string; code?: string };
+    err.requestId = responseRequestId;
+    err.code = code;
+    throw err;
   }
 
   if (schema) {
     const result = schema.safeParse(parsed);
     if (!result.success) {
       console.warn(`[Zod Error] ${path}:`, result.error.format());
-      // On loggue mais on ne plante pas l'app pour éviter les crashs inattendus en prod
       return parsed as T;
     }
     return result.data;
@@ -89,4 +149,3 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
 
   return parsed as T;
 }
-
