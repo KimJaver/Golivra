@@ -3,7 +3,6 @@ import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 're
 import { Image } from 'expo-image';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -11,10 +10,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Fonts } from '@/constants/theme';
 import { useAppColors } from '@/hooks/use-app-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  getBiometricLockEnabled,
+  promptBiometricUnlock,
+} from '@/lib/biometric-lock';
+import { markOnboardingComplete, resolveBootstrapTarget } from '@/lib/app-bootstrap';
 import { UX_ONBOARDING } from '@/lib/ux-copy';
-
-const ONBOARDING_SEEN_KEY = 'golivra_onboarding_v2';
-const memoryStore = new Map<string, string>();
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -41,37 +42,43 @@ export default function LandingScreen() {
   const loopSlides = useMemo(() => [slides[slides.length - 1], ...slides, slides[0]], [slides]);
 
   const handleNext = async () => {
-    try {
-      await AsyncStorage.setItem(ONBOARDING_SEEN_KEY, '1');
-    } catch {
-      memoryStore.set(ONBOARDING_SEEN_KEY, '1');
-    }
+    await markOnboardingComplete();
     router.replace('/auth');
   };
 
   useEffect(() => {
     let isMounted = true;
 
-    const checkFirstLaunch = async () => {
+    const bootstrap = async () => {
       try {
-        let alreadySeen: string | null = null;
-        try {
-          alreadySeen = await AsyncStorage.getItem(ONBOARDING_SEEN_KEY);
-        } catch {
-          alreadySeen = memoryStore.get(ONBOARDING_SEEN_KEY) ?? null;
+        const target = await resolveBootstrapTarget();
+        if (!isMounted) return;
+
+        if (target.kind === 'home') {
+          const bio = await getBiometricLockEnabled();
+          if (bio) {
+            const ok = await promptBiometricUnlock('Déverrouiller GoLivra');
+            if (!ok) {
+              router.replace('/auth');
+              return;
+            }
+          }
+          router.replace(target.href);
+          return;
         }
-        if (alreadySeen === '1' && isMounted) {
+
+        if (target.kind === 'auth') {
           router.replace('/auth');
           return;
         }
-      } finally {
-        if (isMounted) {
-          setIsCheckingFirstLaunch(false);
-        }
+
+        setIsCheckingFirstLaunch(false);
+      } catch {
+        if (isMounted) setIsCheckingFirstLaunch(false);
       }
     };
 
-    void checkFirstLaunch();
+    void bootstrap();
 
     return () => {
       isMounted = false;

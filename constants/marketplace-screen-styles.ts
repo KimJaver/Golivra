@@ -239,6 +239,7 @@ export function createMarketplaceStyles(c: AppPalette) {
     productImgWrap: {
       aspectRatio: 1,
       backgroundColor: c.surfaceMuted,
+      position: 'relative',
     },
     productImg: {
       width: '100%',
@@ -262,6 +263,23 @@ export function createMarketplaceStyles(c: AppPalette) {
       color: c.primaryDeep,
       paddingHorizontal: 10,
       marginTop: 4,
+    },
+    productPriceWrap: {
+      paddingHorizontal: 10,
+      paddingBottom: 2,
+    },
+    promoRibbon: {
+      position: 'absolute',
+      top: 8,
+      left: 8,
+      zIndex: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    promoRibbonText: {
+      fontSize: 11,
+      fontWeight: '800',
     },
     offerBanner: {
       flexDirection: 'row',

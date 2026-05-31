@@ -30,16 +30,15 @@ export function CourierTabBar({ state, descriptors, navigation }: BottomTabBarPr
   );
 
   return (
-    <View style={[styles.root, { paddingBottom: bottomPad }]} pointerEvents="box-none">
+    <View style={[styles.root, styles.boxPointer, { paddingBottom: bottomPad }]}>
       <LinearGradient
-        pointerEvents="none"
         colors={
           isDark
             ? ['rgba(16,18,20,0)', 'rgba(16,18,20,0.95)', palette.primarySoft]
             : ['rgba(255,255,255,0)', 'rgba(246,250,247,0.95)', palette.primarySoft]
         }
         locations={[0, 0.45, 1]}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.noPointer]}
       />
       <View style={styles.barArea}>
         <View style={[styles.track, { borderColor: palette.border }, Platform.OS === 'ios' ? { shadowColor: palette.primaryDeep, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16 } : styles.shadowAndroid]}>
@@ -93,6 +92,8 @@ export function CourierTabBar({ state, descriptors, navigation }: BottomTabBarPr
 
 const styles = StyleSheet.create({
   root: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  boxPointer: { pointerEvents: 'box-none' },
+  noPointer: { pointerEvents: 'none' },
   barArea: { paddingHorizontal: 16, paddingTop: 8 },
   track: {
     borderRadius: 28,

@@ -24,6 +24,7 @@ import { Image } from 'expo-image';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery } from '@tanstack/react-query';
 
+import { ProductPrice } from '@/components/product-price';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { brandGradient3 } from '@/constants/app-palette';
@@ -36,6 +37,7 @@ import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
 import type { EnterprisePublic, ProductPublic } from '@/lib/catalog';
 import { fetchProductsForEnterprise } from '@/lib/catalog';
 import { isProductOrderable } from '@/lib/product-stock';
+import { resolveProductPricing } from '@/lib/product-promo';
 import { formatFcfa } from '@/lib/format';
 import { resolveRemoteImageUrl } from '@/lib/images';
 import {
@@ -299,13 +301,20 @@ export default function MarketplaceListScreen() {
           <View style={styles.productGrid}>
             {popularProducts.map((p) => {
               const img = resolveRemoteImageUrl(p.image_url);
-              const price = typeof p.prix === 'string' ? parseFloat(p.prix) : p.prix;
+              const onPromo = resolveProductPricing(p).promoActive;
               return (
                 <Pressable
                   key={p.id}
                   style={[styles.productCard, { width: gridCol }]}
                   onPress={() => router.push(`/(tabs)/marketplace/${p.entreprise_id}`)}>
                   <View style={[styles.productImgWrap, { width: '100%' }]}>
+                    {onPromo ? (
+                      <View style={[styles.promoRibbon, { backgroundColor: colors.success }]}>
+                        <ThemedText style={[styles.promoRibbonText, { color: colors.onPrimary }]}>
+                          Promo
+                        </ThemedText>
+                      </View>
+                    ) : null}
                     {img ? (
                       <Image
                         source={{ uri: img }}
@@ -324,7 +333,9 @@ export default function MarketplaceListScreen() {
                   <ThemedText style={styles.productName} numberOfLines={2}>
                     {p.nom ?? 'Produit'}
                   </ThemedText>
-                  <ThemedText style={styles.productPrice}>{formatFcfa(price)}</ThemedText>
+                  <View style={styles.productPriceWrap}>
+                    <ProductPrice product={p} size="sm" showBadge />
+                  </View>
                 </Pressable>
               );
             })}

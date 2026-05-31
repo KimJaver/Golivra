@@ -18,6 +18,7 @@ import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
 import { apiFetch } from '@/lib/api';
 import { getSessionToken } from '@/lib/auth';
 import { fetchAllEnterprises, peekAllEnterprises } from '@/lib/client-data';
+import { fetchCached, peekCached } from '@/lib/request-cache';
 import { EventTimeline } from '@/components/event-timeline';
 import { formatDateTimeFr } from '@/lib/datetime';
 import { formatFcfa } from '@/lib/format';
@@ -306,13 +307,15 @@ function OrdersScreenInner({
   );
 }
 
+const ORDERS_CACHE_KEY = 'orders:client';
+
 export default function OrdersScreen() {
   const colors = useAppColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [orders, setOrders] = useState<OrderRow[]>([]);
-  const [enterprises, setEnterprises] = useState<Enterprise[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<OrderRow[]>(() => peekCached<OrderRow[]>(ORDERS_CACHE_KEY, Number.POSITIVE_INFINITY) ?? []);
+  const [enterprises, setEnterprises] = useState<Enterprise[]>(() => peekAllEnterprises() ?? []);
+  const [loading, setLoading] = useState(() => !peekCached<OrderRow[]>(ORDERS_CACHE_KEY, Number.POSITIVE_INFINITY)?.length);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterTab>('encours');
   const [expandedByTab, setExpandedByTab] = useState<Record<FilterTab, boolean>>({
@@ -342,7 +345,12 @@ export default function OrdersScreen() {
         return;
       }
       const [orderList, entList, pending] = await Promise.all([
-        apiFetch<OrderRow[]>('/api/orders', { method: 'GET', token }),
+        fetchCached(
+          ORDERS_CACHE_KEY,
+          () => apiFetch<OrderRow[]>('/api/orders', { method: 'GET', token }),
+          60_000,
+          force,
+        ),
         fetchAllEnterprises(force),
         fetchPendingReviews(token).catch(() => [] as PendingReview[]),
       ]);
@@ -354,7 +362,7 @@ export default function OrdersScreen() {
     } finally {
       setLoading(false);
     }
-  }, [orders.length]);
+  }, []);
 
   const handleOrderRated = useCallback((orderId: string, sousCommandeId?: string | null) => {
     setOrders((prev) =>

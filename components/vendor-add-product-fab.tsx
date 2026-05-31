@@ -25,7 +25,7 @@ export function VendorAddProductFab({ label, bottom, onPress }: Props) {
   const colors = useAppColors();
 
   return (
-    <View style={[styles.host, { bottom }]} pointerEvents="box-none">
+    <View style={[styles.host, styles.boxPointer, { bottom }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -69,6 +69,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     zIndex: 30,
   },
+  boxPointer: { pointerEvents: 'box-none' },
   press: {
     flexDirection: 'row',
     alignItems: 'center',

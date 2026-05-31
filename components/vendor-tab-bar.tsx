@@ -36,14 +36,13 @@ export function VendorTabBar({ state, descriptors, navigation }: BottomTabBarPro
   const fadeMid = isDark ? 'rgba(11,12,14,0.92)' : 'rgba(248,252,249,0.92)';
 
   return (
-    <View style={[styles.root, { paddingBottom: bottomPad }]} pointerEvents="box-none">
+    <View style={[styles.root, styles.boxPointer, { paddingBottom: bottomPad }]}>
       <LinearGradient
-        pointerEvents="none"
         colors={isDark ? ['rgba(11,12,14,0)', fadeMid, colors.backgroundAlt] : ['rgba(255,255,255,0)', fadeMid, palette.primarySoft]}
         locations={[0, 0.4, 1]}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.noPointer]}
       />
-      <View style={styles.barArea} pointerEvents="box-none">
+      <View style={[styles.barArea, styles.boxPointer]}>
         <View
           style={[
             styles.track,
@@ -122,6 +121,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingTop: 4,
   },
+  boxPointer: { pointerEvents: 'box-none' },
+  noPointer: { pointerEvents: 'none' },
   barArea: {
     paddingHorizontal: 14,
     alignItems: 'center',

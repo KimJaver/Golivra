@@ -5,7 +5,10 @@ const STORAGE_KEY = 'golivra_cart_v1';
 type CartListener = () => void;
 const cartListeners = new Set<CartListener>();
 
-// Compteur global synchronisé avec le contexte React
+/** Panier en mémoire — source de vérité instantanée pour l'UI. */
+let memoryCart: CartState | null = null;
+let memoryHydrated = false;
+
 export let currentCartCount = 0;
 
 /** Nombre total d'articles (somme des quantités). */
@@ -17,21 +20,26 @@ export function getCartItemCount(cart: CartState | null): number {
   );
 }
 
+export function getCartSync(): CartState | null {
+  return memoryCart;
+}
+
+export function isCartHydrated(): boolean {
+  return memoryHydrated;
+}
+
 export function subscribeCart(listener: CartListener): () => void {
   cartListeners.add(listener);
   return () => cartListeners.delete(listener);
 }
 
 function notifyCartChanged(): void {
-  // Calcul immédiat du nouveau compteur
-  const newCount = currentCartCount;
-  
-  // Mise à jour via la fonction globale si disponible (React)
-  if (typeof global !== 'undefined' && (global as any).updateCartCount) {
-    (global as any).updateCartCount(newCount);
+  currentCartCount = getCartItemCount(memoryCart);
+  if (typeof global !== 'undefined' && (global as { updateCartState?: () => void }).updateCartState) {
+    (global as { updateCartState: () => void }).updateCartState();
+  } else if (typeof global !== 'undefined' && (global as { updateCartCount?: (n: number) => void }).updateCartCount) {
+    (global as { updateCartCount: (n: number) => void }).updateCartCount(currentCartCount);
   }
-  
-  // Notification synchrone pour une mise à jour immédiate
   cartListeners.forEach((fn) => {
     try {
       fn();
@@ -39,6 +47,11 @@ function notifyCartChanged(): void {
       console.error('Error in cart listener:', e);
     }
   });
+}
+
+function setMemoryCart(state: CartState | null): void {
+  memoryCart = state;
+  notifyCartChanged();
 }
 
 export type CartLine = {
@@ -94,10 +107,8 @@ function migrateFromV1(o: LegacyCartV1): CartState | null {
   };
 }
 
-export async function loadCart(): Promise<CartState | null> {
+function parseStoredCart(raw: string): CartState | null {
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== 'object') return null;
     const obj = parsed as Record<string, unknown>;
@@ -131,28 +142,65 @@ export async function loadCart(): Promise<CartState | null> {
   }
 }
 
-export async function saveCart(state: CartState | null): Promise<void> {
-  if (!state) {
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    currentCartCount = 0;
-    notifyCartChanged();
-    void pushCartToServer(null);
-    return;
+async function readCartFromStorage(): Promise<CartState | null> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return parseStoredCart(raw);
+  } catch {
+    return null;
   }
-  const segments = state.segments.filter((s) => s.lines.length > 0);
-  if (segments.length === 0) {
-    await AsyncStorage.removeItem(STORAGE_KEY);
-    currentCartCount = 0;
-    notifyCartChanged();
-    void pushCartToServer(null);
-    return;
-  }
-  const payload = { segments };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  // Mise à jour immédiate du compteur avant même la notification
-  currentCartCount = getCartItemCount({ segments });
+}
+
+/** Charge AsyncStorage une fois au démarrage. */
+export async function hydrateCart(): Promise<CartState | null> {
+  if (memoryHydrated) return memoryCart;
+  const loaded = await readCartFromStorage();
+  memoryCart = loaded;
+  memoryHydrated = true;
+  currentCartCount = getCartItemCount(loaded);
   notifyCartChanged();
-  void pushCartToServer(payload);
+  return loaded;
+}
+
+export async function loadCart(): Promise<CartState | null> {
+  if (memoryHydrated) return memoryCart;
+  return hydrateCart();
+}
+
+function normalizeCart(state: CartState | null): CartState | null {
+  if (!state) return null;
+  const segments = state.segments.filter((s) => s.lines.length > 0);
+  return segments.length > 0 ? { segments } : null;
+}
+
+function persistCartAsync(state: CartState | null): void {
+  void (async () => {
+    try {
+      if (!state) {
+        await AsyncStorage.removeItem(STORAGE_KEY);
+        void pushCartToServer(null);
+        return;
+      }
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      void pushCartToServer(state);
+    } catch {
+      /* mémoire reste source de vérité */
+    }
+  })();
+}
+
+export function applyCartMutation(updater: (prev: CartState | null) => CartState | null): CartState | null {
+  const next = normalizeCart(updater(memoryCart));
+  setMemoryCart(next);
+  persistCartAsync(next);
+  return next;
+}
+
+export async function saveCart(state: CartState | null): Promise<void> {
+  const next = normalizeCart(state);
+  setMemoryCart(next);
+  persistCartAsync(next);
 }
 
 async function pushCartToServer(state: CartState | null): Promise<void> {
@@ -171,23 +219,21 @@ async function pushCartToServer(state: CartState | null): Promise<void> {
   }
 }
 
-/** Charge le panier serveur et fusionne avec le local (après connexion). */
+/** Fusionne avec le serveur en arrière-plan — ne bloque jamais l'UI. */
 export async function syncCartWithServer(): Promise<void> {
   try {
     const { getSessionToken } = await import('@/lib/auth');
     const token = await getSessionToken();
     if (!token) return;
-    const { fetchRemoteCart } = await import('@/lib/cart-api');
-    const { mergeCartStates } = await import('@/lib/cart-api');
-    const local = await loadCart();
+    const { fetchRemoteCart, mergeCartStates } = await import('@/lib/cart-api');
+    const local = memoryHydrated ? memoryCart : await readCartFromStorage();
     const remote = await fetchRemoteCart(token);
     const merged = mergeCartStates(local, remote.segments?.length ? { segments: remote.segments } : null);
     if (merged) {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      notifyCartChanged();
-      await pushCartToServer(merged);
+      setMemoryCart(merged);
+      persistCartAsync(merged);
     } else if (local) {
-      await pushCartToServer(local);
+      void pushCartToServer(local);
     }
   } catch {
     /* ignore */
@@ -225,7 +271,7 @@ function mergeOrIncrement(
   return [...lines, { productId, nom, prixUnitaire, quantite: 1, stockSnapshot: stockAvailable }];
 }
 
-/** Ajoute une unité au panier (plusieurs commerces autorisés : un segment par entreprise). */
+/** Ajoute une unité — mise à jour mémoire instantanée, persistance en arrière-plan. */
 export function addProductToCartPrompt(params: {
   enterpriseId: string;
   enterpriseNom: string;
@@ -234,20 +280,19 @@ export function addProductToCartPrompt(params: {
   nom: string;
   prixUnitaire: number;
   stockAvailable: number;
-  onDone: () => void;
+  onDone?: () => void;
 }): void {
   const { enterpriseId, enterpriseNom, enterpriseType, productId, nom, prixUnitaire, stockAvailable, onDone } = params;
 
-  void (async () => {
-    const existing = await loadCart();
-    const segments: CartSegment[] = existing?.segments ? existing.segments.map((s) => ({ ...s, lines: [...s.lines] })) : [];
+  applyCartMutation((existing) => {
+    const segments: CartSegment[] = existing?.segments
+      ? existing.segments.map((s) => ({ ...s, lines: [...s.lines] }))
+      : [];
     const idx = segments.findIndex((s) => s.enterpriseId === enterpriseId);
     const prevLines = idx >= 0 ? segments[idx].lines : [];
     const lines = mergeOrIncrement(prevLines, productId, nom, prixUnitaire, stockAvailable);
-    if (lines.length === 0) {
-      onDone();
-      return;
-    }
+    if (lines.length === 0) return existing;
+
     if (idx >= 0) {
       segments[idx] = {
         ...segments[idx],
@@ -258,9 +303,28 @@ export function addProductToCartPrompt(params: {
     } else {
       segments.push({ enterpriseId, enterpriseNom, enterpriseType, lines });
     }
-    await saveCart({ segments });
-    onDone();
-  })();
+    return { segments };
+  });
+
+  onDone?.();
+}
+
+export function updateLineQuantitySync(
+  cart: CartState,
+  enterpriseId: string,
+  productId: string,
+  quantite: number,
+  stockAvailable: number
+): CartState | null {
+  const q = Math.max(0, Math.min(Math.floor(quantite), Math.max(0, stockAvailable)));
+  const segments = cart.segments.map((seg) => {
+    if (seg.enterpriseId !== enterpriseId) return seg;
+    const lines = seg.lines
+      .map((l) => (l.productId === productId ? { ...l, quantite: q } : l))
+      .filter((l) => l.quantite > 0);
+    return { ...seg, lines };
+  });
+  return normalizeCart({ segments });
 }
 
 export async function updateLineQuantity(
@@ -270,25 +334,18 @@ export async function updateLineQuantity(
   quantite: number,
   stockAvailable: number
 ): Promise<void> {
-  const q = Math.max(0, Math.min(Math.floor(quantite), Math.max(0, stockAvailable)));
-  const segments = cart.segments.map((seg) => {
-    if (seg.enterpriseId !== enterpriseId) return seg;
-    const lines = seg.lines
-      .map((l) => (l.productId === productId ? { ...l, quantite: q } : l))
-      .filter((l) => l.quantite > 0);
-    return { ...seg, lines };
-  });
-  const nonEmpty = segments.filter((s) => s.lines.length > 0);
-  if (nonEmpty.length === 0) await saveCart(null);
-  else await saveCart({ segments: nonEmpty });
+  const next = updateLineQuantitySync(cart, enterpriseId, productId, quantite, stockAvailable);
+  await saveCart(next);
 }
 
-export async function removeProductLine(cart: CartState, enterpriseId: string, productId: string): Promise<void> {
+export function removeProductLineSync(cart: CartState, enterpriseId: string, productId: string): CartState | null {
   const segments = cart.segments.map((seg) => {
     if (seg.enterpriseId !== enterpriseId) return seg;
     return { ...seg, lines: seg.lines.filter((l) => l.productId !== productId) };
   });
-  const nonEmpty = segments.filter((s) => s.lines.length > 0);
-  if (nonEmpty.length === 0) await saveCart(null);
-  else await saveCart({ segments: nonEmpty });
+  return normalizeCart({ segments });
+}
+
+export async function removeProductLine(cart: CartState, enterpriseId: string, productId: string): Promise<void> {
+  await saveCart(removeProductLineSync(cart, enterpriseId, productId));
 }

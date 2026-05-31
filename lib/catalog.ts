@@ -27,10 +27,14 @@ export type ProductPublic = {
   nom: string | null;
   description?: string | null;
   prix: number | string;
+  prix_promo?: number | null;
+  promo_debut_at?: string | null;
+  promo_fin_at?: string | null;
   stock?: number | string | null;
   stock_illimite?: boolean;
   est_disponible?: boolean;
   image_url?: string | null;
+  kind?: 'plat' | 'article' | string;
 };
 
 export async function fetchEnterpriseById(id: string, force = false): Promise<EnterprisePublic> {

@@ -16,8 +16,10 @@ import {
 import { Info, Minus, Plus, ShoppingBag, Smartphone, Truck } from 'lucide-react-native';
 
 import { DeliveryAddressForm, type DeliveryAddressFormValue } from '@/components/delivery-address-form';
+import { ProductPrice } from '@/components/product-price';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useCart } from '@/contexts/cart-context';
 import { LUCIDE_STROKE } from '@/constants/icons';
 import { TAB_BAR_CONTENT_PADDING_BOTTOM } from '@/constants/layout';
 import type { EnterprisePublic, ProductPublic } from '@/lib/catalog';
@@ -26,14 +28,13 @@ import { apiFetch } from '@/lib/api';
 import { getSessionToken } from '@/lib/auth';
 import {
   cartTotal,
-  loadCart,
-  syncCartWithServer,
-  removeProductLine,
+  removeProductLineSync,
   saveCart,
   segmentSubtotal,
+  syncCartWithServer,
+  updateLineQuantitySync,
   type CartSegment,
   type CartState,
-  updateLineQuantity,
 } from '@/lib/cart-local';
 import { fetchUserAddresses } from '@/lib/addresses';
 import { formatDeliveryAddressText, isDeliveryAddressComplete, snapshotFromFields } from '@/lib/format-address';
@@ -64,7 +65,7 @@ export default function CartScreen() {
   const insets = useSafeAreaInsets();
   const colors = useAppColors();
   const { showSuccess, showError, FeedbackOverlay } = useActionFeedback();
-  const [cart, setCart] = useState<CartState | null>(null);
+  const { cart, hydrated, hydrate, syncFromMemory } = useCart();
   const [address, setAddress] = useState<DeliveryAddressFormValue>({
     quartier: '',
     ligne1: '',
@@ -78,7 +79,6 @@ export default function CartScreen() {
   const [productById, setProductById] = useState<Record<string, ProductPublic>>({});
   const [enterpriseById, setEnterpriseById] = useState<Record<string, EnterprisePublic | null>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [methodePaiement, setMethodePaiement] = useState<ClientPaymentMethodId>('airtel_money');
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoValidation | null>(null);
@@ -139,12 +139,8 @@ export default function CartScreen() {
     }
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refreshMeta = useCallback(async (c: CartState | null) => {
     void fetchPublicPricing().then(setPricing).catch(() => undefined);
-    await syncCartWithServer().catch(() => undefined);
-    const c = await loadCart();
-    setCart(c);
-    setLoading(false);
     if (c && c.segments.length > 0) {
       void syncStockFromCart(c);
       void loadPrincipalAddress();
@@ -157,8 +153,10 @@ export default function CartScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void refresh();
-    }, [refresh])
+      void hydrate();
+      void syncCartWithServer().then(() => syncFromMemory());
+      void refreshMeta(useCart.getState().cart);
+    }, [hydrate, syncFromMemory, refreshMeta])
   );
 
   const segmentCount = cart?.segments.length ?? 0;
@@ -225,19 +223,17 @@ export default function CartScreen() {
     [stockByProduct]
   );
 
-  const changeQty = async (enterpriseId: string, productId: string, q: number, lineStock?: number) => {
+  const changeQty = (enterpriseId: string, productId: string, q: number, lineStock?: number) => {
     if (!cart) return;
     const cap = stockCap(productId, lineStock);
-    await updateLineQuantity(cart, enterpriseId, productId, q, cap);
-    const next = await loadCart();
-    setCart(next);
+    const next = updateLineQuantitySync(cart, enterpriseId, productId, q, cap);
+    void saveCart(next);
   };
 
-  const removeLine = async (enterpriseId: string, productId: string) => {
+  const removeLine = (enterpriseId: string, productId: string) => {
     if (!cart) return;
-    await removeProductLine(cart, enterpriseId, productId);
-    const next = await loadCart();
-    setCart(next);
+    const next = removeProductLineSync(cart, enterpriseId, productId);
+    void saveCart(next);
   };
 
   const submitOrder = async () => {
@@ -305,7 +301,7 @@ export default function CartScreen() {
         pays: 'Congo',
       });
       setSavedAddressId(null);
-      await refresh();
+      await refreshMeta(null);
       const summaryHref = {
         pathname: '/order-deliveries-summary',
         params: { data: encodeURIComponent(JSON.stringify(rows)) },
@@ -333,17 +329,6 @@ export default function CartScreen() {
   const hasItems = cart && cart.segments.some((s) => s.lines.length > 0);
   const addressOk = isDeliveryAddressComplete(address);
 
-  if (loading) {
-    return (
-      <ThemedView style={styles.screen}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <ThemedText style={styles.muted}>Chargement du panier…</ThemedText>
-        </View>
-      </ThemedView>
-    );
-  }
-
   return (
     <ThemedView style={styles.screen}>
       <FeedbackOverlay />
@@ -359,7 +344,11 @@ export default function CartScreen() {
             Votre panier
           </ThemedText>
 
-          {!hasItems ? (
+          {!hydrated && !hasItems ? (
+            <View style={styles.bootRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : !hasItems ? (
             <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={[styles.emptyIcon, { backgroundColor: colors.primarySoft, borderColor: colors.border }]}>
                 <ShoppingBag size={28} color={colors.primary} strokeWidth={LUCIDE_STROKE} />
@@ -437,8 +426,8 @@ export default function CartScreen() {
                                 style={[styles.qtyCircle, { borderColor: colors.primary, backgroundColor: colors.surface }]}
                                 onPress={() =>
                                   line.quantite <= 1
-                                    ? void removeLine(seg.enterpriseId, line.productId)
-                                    : void changeQty(seg.enterpriseId, line.productId, line.quantite - 1, line.stockSnapshot)
+                                    ? removeLine(seg.enterpriseId, line.productId)
+                                    : changeQty(seg.enterpriseId, line.productId, line.quantite - 1, line.stockSnapshot)
                                 }>
                                 <Minus size={18} color={colors.primary} strokeWidth={LUCIDE_STROKE} />
                               </Pressable>
@@ -446,15 +435,20 @@ export default function CartScreen() {
                               <Pressable
                                 style={[styles.qtyCircle, { borderColor: colors.primary, backgroundColor: colors.surface }]}
                                 onPress={() =>
-                                  void changeQty(seg.enterpriseId, line.productId, line.quantite + 1, line.stockSnapshot)
+                                  changeQty(seg.enterpriseId, line.productId, line.quantite + 1, line.stockSnapshot)
                                 }
                                 disabled={line.quantite >= cap}>
                                 <Plus size={18} color={colors.primary} strokeWidth={LUCIDE_STROKE} />
                               </Pressable>
                             </View>
-                            <ThemedText type="defaultSemiBold" style={[styles.linePriceRight, { color: colors.text }]}>
-                              {formatFcfa(lineTotal)}
-                            </ThemedText>
+                            <View style={styles.linePriceCol}>
+                              {prod ? (
+                                <ProductPrice product={prod} size="sm" showDuration={false} />
+                              ) : null}
+                              <ThemedText type="defaultSemiBold" style={[styles.linePriceRight, { color: colors.text }]}>
+                                {formatFcfa(lineTotal)}
+                              </ThemedText>
+                            </View>
                           </View>
                         </View>
                       );
@@ -613,6 +607,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
   title: { fontSize: 26, fontWeight: '800', marginBottom: 20 },
+  bootRow: { alignItems: 'center', paddingVertical: 48 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   muted: { fontSize: 14 },
   multiBanner: {
@@ -717,6 +712,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   qtyVal: { fontSize: 16, fontWeight: '800', minWidth: 24, textAlign: 'center' },
+  linePriceCol: { alignItems: 'flex-end', gap: 2 },
   linePriceRight: { fontSize: 16 },
   summary: {
     marginTop: 8,

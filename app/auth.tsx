@@ -18,7 +18,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import type { AppPalette } from '@/constants/app-palette';
 import { useAppColors } from '@/hooks/use-app-colors';
-import { loginAccount, setSessionToken } from '@/lib/auth';
+import { loginAccount, persistAuthSession } from '@/lib/auth';
 import { prefetchClientCatalog } from '@/lib/client-data';
 import { formatCgPhone, toCgE164 } from '@/lib/phone';
 import { homeHrefForRole } from '@/lib/roles';
@@ -66,7 +66,7 @@ export default function AuthScreen() {
         telephone: phoneE164,
         motDePasse: password,
       });
-      await setSessionToken(session.token);
+      await persistAuthSession(session);
       prefetchClientCatalog();
       void import('@/lib/favorites').then((m) => m.syncFavoritesWithServer());
       void import('@/lib/cart-local').then((m) => m.syncCartWithServer());

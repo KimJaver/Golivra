@@ -1,25 +1,46 @@
 import { useEffect, type ReactNode } from 'react';
 import { create } from 'zustand';
 
-import { getCartItemCount, loadCart, subscribeCart } from '@/lib/cart-local';
+import {
+  getCartItemCount,
+  getCartSync,
+  hydrateCart,
+  subscribeCart,
+  syncCartWithServer,
+  type CartState,
+} from '@/lib/cart-local';
 
 type CartStore = {
+  cart: CartState | null;
   itemCount: number;
-  refreshCart: () => Promise<void>;
+  hydrated: boolean;
+  syncFromMemory: () => void;
+  hydrate: () => Promise<void>;
 };
 
-export const useCart = create<CartStore>((set) => ({
-  itemCount: 0,
-  refreshCart: async () => {
-    const cart = await loadCart();
-    const newCount = getCartItemCount(cart);
-    set({ itemCount: newCount });
+export const useCart = create<CartStore>((set, get) => ({
+  cart: getCartSync(),
+  itemCount: getCartItemCount(getCartSync()),
+  hydrated: false,
+  syncFromMemory: () => {
+    const cart = getCartSync();
+    set({ cart, itemCount: getCartItemCount(cart) });
+  },
+  hydrate: async () => {
+    if (get().hydrated) {
+      get().syncFromMemory();
+      return;
+    }
+    const cart = await hydrateCart();
+    set({ cart, itemCount: getCartItemCount(cart), hydrated: true });
   },
 }));
 
-// Expose global pour mise à jour immédiate depuis cart-local
 if (typeof global !== 'undefined') {
-  (global as any).updateCartCount = (count: number) => {
+  (global as { updateCartState?: () => void }).updateCartState = () => {
+    useCart.getState().syncFromMemory();
+  };
+  (global as { updateCartCount?: (count: number) => void }).updateCartCount = (count: number) => {
     useCart.setState({ itemCount: count });
   };
 }
@@ -27,15 +48,15 @@ if (typeof global !== 'undefined') {
 export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const store = useCart.getState();
-    void store.refreshCart();
-    
-    const unsubscribe = subscribeCart(() => {
-      void store.refreshCart();
+    void store.hydrate().then(() => {
+      void syncCartWithServer().then(() => store.syncFromMemory());
     });
-    
-    return () => {
-      unsubscribe();
-    };
+
+    const unsubscribe = subscribeCart(() => {
+      store.syncFromMemory();
+    });
+
+    return unsubscribe;
   }, []);
 
   return <>{children}</>;

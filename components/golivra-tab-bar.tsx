@@ -105,18 +105,17 @@ export function GolivraTabBar({ state, descriptors, navigation }: BottomTabBarPr
   };
 
   return (
-    <View style={[styles.root, { paddingBottom: bottomPad }]} pointerEvents="box-none">
+    <View style={[styles.root, styles.rootPointer, { paddingBottom: bottomPad }]}>
       <LinearGradient
-        pointerEvents="none"
         colors={
           isDark
             ? ['rgba(11,12,14,0)', 'rgba(11,12,14,0.88)', colors.backgroundAlt]
             : ['rgba(255,255,255,0)', 'rgba(248,252,249,0.88)', colors.backgroundAlt]
         }
         locations={[0, 0.45, 1]}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.noPointer]}
       />
-      <View style={styles.barArea} pointerEvents="box-none">
+      <View style={[styles.barArea, styles.boxPointer]}>
         <View style={styles.track}>
           <View style={[styles.trackInner, Platform.OS === 'ios' ? styles.trackShadowIos : styles.trackShadowAndroid]}>
             <BlurView
@@ -147,7 +146,7 @@ export function GolivraTabBar({ state, descriptors, navigation }: BottomTabBarPr
             </View>
           </View>
 
-          <View style={styles.fabSlot} pointerEvents="box-none">
+          <View style={[styles.fabSlot, styles.boxPointer]}>
             <PlatformPressable
               accessibilityRole="button"
               accessibilityLabel="Panier"
@@ -191,6 +190,9 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     position: 'relative',
   },
+  rootPointer: { pointerEvents: 'box-none' },
+  boxPointer: { pointerEvents: 'box-none' },
+  noPointer: { pointerEvents: 'none' },
   barArea: {
     paddingHorizontal: 18,
     alignItems: 'center',

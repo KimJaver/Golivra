@@ -23,7 +23,8 @@
       "package": "kimjaver.golivra"
     },
     "web": {
-      "output": "static",
+      "bundler": "metro",
+      "output": "single",
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [

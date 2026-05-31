@@ -1,8 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { apiFetch } from '@/lib/api';
+import { clearSessionSnapshot, saveSessionSnapshot } from '@/lib/session-store';
 
 const TOKEN_KEY = 'golivra_session_token';
+
+let memoryToken: string | null = null;
+let tokenHydrated = false;
 
 export type AuthUser = {
   id: string;
@@ -21,24 +25,46 @@ export type AuthSession = {
   user: AuthUser;
 };
 
-export async function getSessionToken(): Promise<string | null> {
+export function getSessionTokenSync(): string | null {
+  return memoryToken;
+}
+
+export async function hydrateSessionToken(): Promise<string | null> {
+  if (tokenHydrated) return memoryToken;
   try {
-    return await AsyncStorage.getItem(TOKEN_KEY);
+    memoryToken = await AsyncStorage.getItem(TOKEN_KEY);
   } catch {
-    return null;
+    memoryToken = null;
   }
+  tokenHydrated = true;
+  return memoryToken;
+}
+
+export async function getSessionToken(): Promise<string | null> {
+  if (tokenHydrated) return memoryToken;
+  return hydrateSessionToken();
 }
 
 export async function setSessionToken(token: string): Promise<void> {
+  memoryToken = token;
+  tokenHydrated = true;
   await AsyncStorage.setItem(TOKEN_KEY, token);
 }
 
 export async function clearSessionToken(): Promise<void> {
+  memoryToken = null;
+  tokenHydrated = true;
   try {
     await AsyncStorage.removeItem(TOKEN_KEY);
   } catch {
     /* ignore */
   }
+}
+
+/** Après login / inscription : token + snapshot pour démarrage instantané. */
+export async function persistAuthSession(session: AuthSession): Promise<void> {
+  await setSessionToken(session.token);
+  await saveSessionSnapshot(session);
 }
 
 export async function registerAccount(payload: {
@@ -92,6 +118,7 @@ export async function logoutLocal(): Promise<void> {
   } catch {
     /* ignore */
   }
+  await clearSessionSnapshot();
   if (token) {
     void logoutRemote(token).catch(() => {
       /* réseau lent ou hors ligne : on déconnecte quand même localement */

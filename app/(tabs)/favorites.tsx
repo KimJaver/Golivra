@@ -22,7 +22,7 @@ export default function FavoritesScreen() {
   const colors = useAppColors();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [enterprises, setEnterprises] = useState<EnterprisePublic[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !peekAllEnterprises()?.length);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,9 +57,15 @@ export default function FavoritesScreen() {
   useFocusEffect(
     useCallback(() => {
       const cached = peekAllEnterprises();
-      if (!cached?.length) setLoading(true);
+      if (cached?.length) {
+        setLoading(false);
+        void getFavoriteEnterpriseIds().then((ids) => {
+          setFavoriteIds(ids);
+          applyFavorites(ids, cached);
+        });
+      }
       void load();
-    }, [load])
+    }, [load, applyFavorites])
   );
 
   const onRefresh = () => {

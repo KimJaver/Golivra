@@ -63,10 +63,9 @@ export function HomeHeroCarousel({ slides, heroIndex, onIndexChange, onCta }: Pr
                 transition={220}
               />
               <LinearGradient
-                pointerEvents="none"
                 colors={['transparent', 'transparent', 'rgba(6,25,18,0.55)']}
                 locations={[0, 0.45, 1]}
-                style={StyleSheet.absoluteFillObject}
+                style={[StyleSheet.absoluteFillObject, styles.noPointer]}
               />
               <View style={styles.ctaBar}>
                 <View style={[styles.ctaPill, { backgroundColor: ctaPillBg }]}>
@@ -137,4 +136,5 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   dot: { height: 8, borderRadius: 99 },
+  noPointer: { pointerEvents: 'none' },
 });

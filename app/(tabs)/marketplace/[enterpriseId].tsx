@@ -2,6 +2,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import {
   Building2,
   Clock,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
 
+import { ProductPrice } from '@/components/product-price';
 import { ScreenEmptyState, ScreenLoadState } from '@/components/screen-load-state';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -27,7 +29,7 @@ import type { EnterprisePublic, ProductPublic } from '@/lib/catalog';
 import { fetchEnterpriseById, fetchProductsForEnterprise } from '@/lib/catalog';
 import { peekEnterpriseById, peekProductsForEnterprise } from '@/lib/client-data';
 import { addProductToCartPrompt } from '@/lib/cart-local';
-import { formatFcfa } from '@/lib/format';
+import { getEffectiveUnitPrice } from '@/lib/product-promo';
 import { resolveRemoteImageUrl } from '@/lib/images';
 import {
   effectiveStockCap,
@@ -36,11 +38,6 @@ import {
 } from '@/lib/product-stock';
 import { toggleFavorite, isFavorite } from '@/lib/favorites-api';
 import { getSessionToken } from '@/lib/auth';
-
-function numPrice(prix: number | string): number {
-  const n = Number(prix);
-  return Number.isFinite(n) ? n : 0;
-}
 
 export default function EnterpriseDetailScreen() {
   const { enterpriseId } = useLocalSearchParams<{ enterpriseId: string }>();
@@ -150,7 +147,8 @@ export default function EnterpriseDetailScreen() {
 
   const addProduct = (p: ProductPublic) => {
     if (!enterprise) return;
-    const prix = numPrice(p.prix);
+    const prix = getEffectiveUnitPrice(p);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     addProductToCartPrompt({
       enterpriseId: enterprise.id,
       enterpriseNom: enterprise.nom ?? 'Commerce',
@@ -158,7 +156,7 @@ export default function EnterpriseDetailScreen() {
       productId: p.id,
       nom: p.nom ?? 'Produit',
       prixUnitaire: prix,
-      stockAvailable: effectiveStockCap(p),
+      stockAvailable: effectiveStockCap(p, { enterpriseType: enterprise.type }),
       onDone: () => {},
     });
   };
@@ -261,10 +259,9 @@ export default function EnterpriseDetailScreen() {
           </View>
         ) : (
           products.map((p) => {
-            const prix = numPrice(p.prix);
             const img = resolveRemoteImageUrl(p.image_url);
-            const disabled = !isProductOrderable(p);
-            const stockLabel = stockDisplayLabel(p);
+            const disabled = !isProductOrderable(p, { enterpriseType: enterprise.type });
+            const stockLabel = stockDisplayLabel(p, { enterpriseType: enterprise.type });
             return (
               <View key={p.id} style={styles.productCard}>
                 <View style={styles.productThumb}>
@@ -285,7 +282,7 @@ export default function EnterpriseDetailScreen() {
                       {p.description}
                     </ThemedText>
                   ) : null}
-                  <ThemedText style={styles.productPrice}>{formatFcfa(prix)}</ThemedText>
+                  <ProductPrice product={p} showBadge />
                   {stockLabel ? (
                     <ThemedText style={[styles.stock, disabled && styles.stockOut]}>{stockLabel}</ThemedText>
                   ) : disabled ? (
